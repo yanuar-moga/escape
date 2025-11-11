@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Kata Misteri - Kelompok 4</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #0d1b2a;
+        color: #fff;
+        text-align: center;
+        padding: 20px;
+    }
+    h1 { color: #00ffea; }
+    .box {
+        background: #1b263b;
+        padding: 15px;
+        border-radius: 10px;
+        max-width: 350px;
+        margin: auto;
+    }
+    input {
+        padding: 10px;
+        border: none;
+        width: 80%;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+    button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        background: #ffd700;
+        cursor: pointer;
+    }
+    .flag {
+        font-size: 60px;
+        animation: goyang 0.4s infinite;
+    }
+    @keyframes goyang {
+        0% { transform: rotate(0deg); }
+        50% { transform: rotate(6deg); }
+        100% { transform: rotate(0deg); }
+    }
+</style>
+</head>
+<body>
+
+<h1>Kelompok 4</h1>
+<h2 id="timer">Waktu: 30</h2>
+
+<div class="box">
+    <p id="soal">Kata ke-1</p>
+    <input type="text" id="jawab">
+    <button onclick="cek()">Kirim</button>
+</div>
+
+<div id="finish" style="display:none;">
+    <span class="flag">🚩🚩🚩</span>
+    <h1>Selamat, kamu menemukan kata rahasia!</h1>
+    <span class="flag">🚩🚩🚩</span>
+</div>
+
+<script>
+let kata = JSON.parse(localStorage.getItem("kataMisteri")) || [];
+let nomor = 0;
+let timeLeft = 30;
+
+let timer = setInterval(function(){
+    document.getElementById("timer").textContent = "Waktu: " + timeLeft;
+    timeLeft--;
+    if (timeLeft < 0) {
+        if (nomor > 0) nomor--;
+        waktuUlang();
+    }
+}, 1000);
+
+function waktuUlang(){
+    alert("Waktu habis! Kembali ke kata sebelumnya.");
+    nomor--;
+    if(nomor < 0) nomor = 0;
+    document.getElementById("soal").innerHTML = "Kata ke-"+(nomor+1);
+    timeLeft = 30;
+}
+
+function cek(){
+    let j = document.getElementById("jawab").value.toLowerCase().trim();
+    if(j === kata[nomor]){
+        nomor++;
+        if(nomor === kata.length){
+            selesai();
+        } else {
+            document.getElementById("soal").innerHTML = "Kata ke-"+(nomor+1);
+            document.getElementById("jawab").value = "";
+            timeLeft = 30;
+        }
+    } else {
+        alert("Salah! Kembali ke kata sebelumnya!");
+        nomor--;
+        if(nomor < 0) nomor = 0;
+        document.getElementById("soal").innerHTML = "Kata ke-"+(nomor+1);
+        timeLeft = 30;
+    }
+}
+
+function selesai(){
+    clearInterval(timer);
+    document.querySelector(".box").style.display = "none";
+    document.getElementById("finish").style.display = "block";
+}
+</script>
+
+</body>
+</html>
