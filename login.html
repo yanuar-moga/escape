@@ -1,128 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Login Aplikasi Misteri</title>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Login — Escape Room</title>
 <style>
-  body{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    min-height:100vh;
-    background:#e8f2ff;
-    font-family:Arial;
-  }
-
-  .login-card {
-    background:#fff;
-    border-radius:18px;
-    padding:18px 20px;
-    width:90%;
-    max-width:240px;
-    box-shadow:0 3px 8px rgba(0,0,0,.1);
-    border-top:4px solid #ffd84c;
-    text-align:center;
-  }
-
-  .login-card img {
-    width:55px;
-    height:55px;
-    border-radius:50%;
-    margin-bottom:8px;
-  }
-
-  h2 {
-    font-size:1rem;
-    color:#003f7f;
-    margin:10px 0 18px;
-  }
-
-  input, select {
-    width:100%;
-    padding:7px 8px;
-    margin-bottom:10px;
-    border:1px solid #ccc;
-    border-radius:6px;
-    font-size:13px;
-    box-sizing:border-box;
-  }
-
-  .show-pass {
-    display:flex;
-    align-items:center;
-    justify-content:flex-start;
-    font-size:13px;
-    color:#333;
-    margin-bottom:12px;
-    width:100%;
-  }
-
-  .show-pass input[type=checkbox] {
-    margin-right:6px;
-    transform:scale(1.05);
-    cursor:pointer;
-    accent-color:#4da3ff;
-  }
-
-  button {
-    width:100%;
-    padding:8px;
-    border:none;
-    border-radius:6px;
-    background:linear-gradient(90deg,#4da3ff,#007bff);
-    color:#fff;
-    font-weight:600;
-    cursor:pointer;
-    transition:.25s;
-  }
-
-  button:hover {
-    transform:scale(1.03);
-  }
-
-  .footer {
-    margin-top:12px;
-    font-size:10.5px;
-    color:#777;
-  }
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#e6f7ff,#f7faff);font-family:Inter,Arial;}
+  .login-card{background:#fff;border-radius:18px;padding:18px 20px;width:90%;max-width:320px;box-shadow:0 3px 8px rgba(0,0,0,.1);border-top:4px solid #ffd84c;text-align:center;}
+  .login-card img{width:55px;height:55px;border-radius:50%;margin-bottom:8px}
+  h2{font-size:1rem;color:#003f7f;margin:10px 0 18px}
+  input[type=text],input[type=password],select{width:100%;padding:7px 8px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px;font-size:13px;box-sizing:border-box}
+  .show-pass{display:flex;align-items:center;justify-content:flex-start;font-size:13px;color:#333;margin-bottom:12px;width:100%}
+  .show-pass input[type=checkbox]{margin-right:6px;transform:scale(1.05);cursor:pointer;accent-color:#4da3ff}
+  button{width:100%;padding:8px;border:none;border-radius:6px;background:linear-gradient(90deg,#4da3ff,#007bff);color:#fff;font-weight:600;font-size:13.5px;cursor:pointer;transition:.25s}
+  button:hover{transform:scale(1.03);background:linear-gradient(90deg,#007bff,#005ecb)}
+  .footer{margin-top:12px;font-size:10.5px;color:#777}
+  .note{font-size:13px;color:#065; margin-top:8px}
 </style>
-
 </head>
 <body>
+  <div class="login-card">
+    <img src="assets/logo.png" alt="Logo Sekolah">
+    <h2>Escape Room — Bab 5</h2>
 
-<div class="login-card">
-  <img src="assets/logo.png" alt="Logo Sekolah">
-  <h2>Mystery Quiz</h2>
+    <form id="loginForm">
+      <select id="role">
+        <option value="siswa">Login Siswa</option>
+        <option value="admin">Login Guru</option>
+      </select>
 
-  <form id="loginForm">
-    <select id="role">
-      <option value="siswa">Login Siswa</option>
-      <option value="admin">Login Guru</option>
-    </select>
+      <input type="text" id="username" placeholder="Username (kelompok1..kelompok6 / admin)" required>
+      <input type="password" id="password" placeholder="Password" required>
 
-    <input type="text" id="username" placeholder="Username" required>
-    <input type="password" id="password" placeholder="Password" required>
+      <div class="show-pass">
+        <input type="checkbox" id="showPassword"><label for="showPassword">Tampilkan Password</label>
+      </div>
 
-    <div class="show-pass">
-      <input type="checkbox" id="showPassword">
-      <label for="showPassword">Tampilkan Password</label>
-    </div>
+      <button type="submit">Masuk</button>
+    </form>
 
-    <button type="submit">Masuk</button>
-  </form>
+    <div class="note">Siswa: user = kelompok1..kelompok6, pass = belajar2025. Guru: user = admin, pass = guru123</div>
+    <div class="footer">© 2025 — SMP Negeri 1 Moga</div>
+  </div>
 
-  <div class="footer">© 2025 All rights reserved</div>
-</div>
-
-<script src="login.js"></script>
 <script>
-// Tampilkan password
 document.getElementById("showPassword").addEventListener("change", function(){
   const pass = document.getElementById("password");
   pass.type = this.checked ? "text" : "password";
 });
+document.getElementById("loginForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  const role = document.getElementById("role").value;
+  const user = document.getElementById("username").value.trim().toLowerCase();
+  const pass = document.getElementById("password").value.trim();
+  const siswaList = ["kelompok1","kelompok2","kelompok3","kelompok4","kelompok5","kelompok6"];
+  if(role === "siswa"){
+    if(siswaList.includes(user) && pass === "belajar2025"){
+      // simpan kelompok & avatar mapping
+      sessionStorage.setItem("kelompok", user);
+      // avatar mapping tetap di game.html (agar consistent)
+      window.location.href = "game.html";
+    } else { alert("Username / Password siswa salah"); }
+  } else {
+    if(user === "admin" && pass === "guru123"){
+      window.location.href = "admin.html";
+    } else { alert("Login admin salah"); }
+  }
+});
 </script>
-
 </body>
 </html>
