@@ -3,32 +3,41 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Game — Escape Room</title>
+<title>Game — Escape Room (Kelompok)</title>
 
-<!-- libs -->
+<!-- SweetAlert2 & Confetti -->
 <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 
-<!-- firebase compat -->
+<!-- Firebase compat -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
-  body{font-family:Inter,Arial;background:linear-gradient(180deg,#f3fbff,#fff);margin:0;padding:18px}
+  :root{--accent:#0ea5a4;--danger:#ef4444}
+  body{font-family:Inter,system-ui,Arial;margin:0;background:linear-gradient(180deg,#eef9ff,#ffffff);padding:18px}
   .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .avatar{display:flex;align-items:center;gap:10px}
-  .avatar img{width:64px;height:64px;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.08)}
-  .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 8px 20px rgba(9,30,63,0.04);margin-top:12px}
-  #timer{font-weight:700;color:#b91c1c;font-size:20px}
-  .soal-item{padding:12px;border-radius:10px;border:1px dashed #e6f7f7;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
-  .soal-left{flex:1;margin-right:12px}
-  .token-pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#f0f9ff;color:#036;margin-left:6px;font-weight:700}
-  .tokens-area{margin-top:12px}
-  .flag {position:fixed;right:20px;top:100px;transform-origin:bottom center;display:none}
+  .avatar{display:flex;align-items:center;gap:12px}
+  .avatar img{width:72px;height:72px;border-radius:12px;object-fit:cover;box-shadow:0 8px 18px rgba(10,30,60,0.06)}
+  .card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 10px 30px rgba(8,20,40,0.04);margin-top:14px}
+  #timer{font-weight:800;color:#b91c1c;font-size:20px}
+  .question-area{margin-top:12px}
+  .soal-text{font-size:18px;margin-bottom:12px}
+  .control{display:flex;gap:10px;align-items:center}
+  input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #e6f3f3}
+  button{padding:10px 14px;border-radius:8px;border:none;background:var(--accent);color:#023;cursor:pointer;font-weight:700}
+  button.secondary{background:#fff;border:1px solid #e6f3f3;color:#024}
+  .tokens{margin-top:14px;font-weight:700;color:#036}
+  .token-pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#f0f9ff;color:#036;margin-right:6px;margin-top:6px}
+  .flag{position:fixed;right:18px;top:90px;display:none;z-index:999}
   .flag img{width:120px}
+  .bpm{font-size:13px;color:#444}
+  .mute-btn{background:#fff;border:1px solid #e6eef0;padding:8px;border-radius:8px;cursor:pointer}
+  .small{font-size:13px;color:#456}
   .shake{animation:shake .6s}
   @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-6px)}100%{transform:translateX(0)}}
+  @media(max-width:640px){ .avatar img{width:56px;height:56px} input[type=text]{padding:8px} }
 </style>
 </head>
 <body>
@@ -37,209 +46,298 @@
   <div class="avatar">
     <img id="avatarImg" src="assets/avatars/ninja-cat.png" alt="avatar">
     <div>
-      <div id="groupName" style="font-weight:700">Kelompok</div>
-      <div id="statusSmall" style="font-size:13px;color:#066">Siap bermain</div>
+      <div id="groupName" style="font-weight:800">KELOMPOK</div>
+      <div class="small" id="statusSmall">Siap bermain — Semoga beruntung!</div>
     </div>
   </div>
+
   <div style="text-align:right">
-    <div id="timer">15:00</div>
-    <div style="font-size:13px;color:#444">Sisa waktu</div>
+    <div id="timer">00:30</div>
+    <div class="small">Waktu sisa (per soal)</div>
+    <div style="height:8px"></div>
+    <button class="mute-btn" id="toggleBgm">BGM: On</button>
   </div>
 </div>
 
 <div class="card" id="gameCard" style="display:none">
-  <h3>Soal - Jawab untuk mendapatkan 1 kata misteri per soal</h3>
-  <div id="soalList"></div>
+  <h3 style="margin:0 0 8px 0">Escape Room — Bab 5: Komputer & Jaringan</h3>
+  <div class="small">Jawab benar untuk mendapatkan 1 kata misteri per soal. 10 kata total.</div>
 
-  <div class="tokens-area card" style="margin-top:12px">
-    <div>Tokens terkumpul:</div>
-    <div id="tokens" style="margin-top:8px;font-weight:700">—</div>
+  <div class="question-area" id="questionArea">
+    <!-- Per soal area -->
+    <div class="soal-text" id="soalText">Memuat soal...</div>
+
+    <div class="control">
+      <input type="text" id="answerInput" placeholder="Ketik jawaban...">
+      <button id="submitBtn">Kirim</button>
+      <button id="skipBtn" class="secondary">Skip (menter)</button>
+    </div>
+
+    <div id="feedback" class="small" style="margin-top:10px;color:#055"></div>
+
+    <div class="tokens" id="tokensArea">Tokens terkumpul: <div id="tokensList" style="margin-top:8px"></div></div>
   </div>
 </div>
 
-<!-- flag for victory -->
+<!-- flag and confetti -->
 <div class="flag" id="flagDiv"><img src="assets/icon/flag.png" alt="flag"></div>
 
-<!-- sounds -->
-<audio id="sndCling" src="assets/sound/cling.mp3"></audio>
-<audio id="sndBuzz" src="assets/sound/buzz.mp3"></audio>
+<!-- audio -->
+<audio id="bgm" loop src="assets/sound/bgm-adventure.mp3"></audio>
+<audio id="sndCling" src="https://assets.mixkit.co/sfx/preview/mixkit-game-notification-positive-2683.mp3"></audio>
+<audio id="sndBuzz" src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3"></audio>
 
-<!-- config.js must exist with firebaseConfig -->
-<script src="config.js"></script>
-
+<!-- firebase config (you provided) -->
 <script>
-  // init firebase
+  const firebaseConfig = {
+  apiKey: "AIzaSyBr-nd0dxZl5q6DLPxMKLybJ7MyBc9kaBc",
+  authDomain: "realtime-database-f59b8.firebaseapp.com",
+  databaseURL: "https://realtime-database-f59b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "realtime-database-f59b8",
+  storageBucket: "realtime-database-f59b8.firebasestorage.app",
+  messagingSenderId: "320982155387",
+  appId: "1:320982155387:web:df67817761e282dee4a2de"
+  };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
+</script>
 
-  // avatar mapping per kelompok
-  const avatars = {
-    kelompok1: 'assets/avatars/ninja-cat.png',
-    kelompok2: 'assets/avatars/robot.png',
-    kelompok3: 'assets/avatars/alien.png',
-    kelompok4: 'assets/avatars/chicken.png',
-    kelompok5: 'assets/avatars/panda.png',
-    kelompok6: 'assets/avatars/dino.png'
+<script>
+/* -------------------------
+   STATE & CONFIG
+   ------------------------- */
+const avatars = {
+  kelompok1: 'assets/avatars/ninja-cat.png',
+  kelompok2: 'assets/avatars/robot.png',
+  kelompok3: 'assets/avatars/alien.png',
+  kelompok4: 'assets/avatars/chicken.png',
+  kelompok5: 'assets/avatars/panda.png',
+  kelompok6: 'assets/avatars/dino.png'
+};
+
+const GROUP = sessionStorage.getItem('kelompok') || localStorage.getItem('kelompok');
+const AV = sessionStorage.getItem('avatar') || localStorage.getItem('avatar');
+if(!GROUP){ alert('Kelompok tidak ditemukan — kembali ke login'); location.href='login.html'; }
+
+document.getElementById('groupName').textContent = GROUP.toUpperCase();
+document.getElementById('avatarImg').src = AV || avatars[GROUP] || 'assets/avatars/ninja-cat.png';
+
+let game = null;           // full game object from /game/current
+let order = [];            // array of indices after shuffle
+let currentIndex = 0;      // index in "order" (which points into game.soal)
+let tokens = [];           // tokens collected (length = total)
+let totalQuestions = 0;
+let perQuestionTime = 30;  // seconds per question
+let timer = perQuestionTime;
+let timerInterval = null;
+let bgmOn = true;
+
+/* -------------------------
+   UTILS
+   ------------------------- */
+function shuffleArray(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+function playSound(id){ try{ document.getElementById(id).currentTime = 0; document.getElementById(id).play(); }catch(e){} }
+function updateTokensUI(){
+  const el = document.getElementById('tokensList');
+  el.innerHTML = '';
+  tokens.forEach(t=>{
+    const span = document.createElement('span');
+    span.className = 'token-pill';
+    span.textContent = t ? t : '—';
+    el.appendChild(span);
+  });
+}
+function writeProgressToDB(){
+  const payload = {
+    benar: tokens.filter(x=>x).length,
+    total: totalQuestions,
+    tokens: tokens,
+    currentIndex: currentIndex,
+    waktuRemaining: timer,
+    started: true,
+    selesai: false,
+    lastUpdate: Date.now()
   };
+  db.ref('/progress/'+GROUP).set(payload).catch(e=>console.warn(e));
+}
 
-  const group = sessionStorage.getItem('kelompok') || prompt('Masukkan kelompok (contoh: kelompok1)');
-  if(!group){ alert('Kelompok tidak terdeteksi. Kembali ke login.'); window.location.href='login.html'; }
-
-  // set avatar + name
-  document.getElementById('groupName').textContent = group.toUpperCase();
-  document.getElementById('avatarImg').src = avatars[group] || 'assets/avatars/ninja-cat.png';
-
-  // state
-  let gameData = null;
-  let shuffled = [];
-  let tokens = [];
-  let total = 0;
-  let waktu = 15*60; // 15 menit default (bisa disesuaikan dari admin later)
-  let timerInterval = null;
-
-  // load current game from /game/current
-  function loadGame(){
-    db.ref('/game/current').once('value').then(snap=>{
-      const val = snap.val();
-      if(!val || !val.soal || !val.soal.length){ Swal.fire('Belum ada soal','Minta guru upload soal dulu di admin','warning'); return; }
-      gameData = val;
-      // ensure at least 10 tokens (admin should supply tokens per soal)
-      shuffled = [...gameData.soal];
-      shuffle(shuffled);
-      total = shuffled.length;
-      tokens = Array(total).fill(null);
-      renderQuestions();
-      initProgress(); // create progress node for this group
-      document.getElementById('gameCard').style.display = 'block';
-    });
-  }
-
-  // render questions
-  function renderQuestions(){
-    const list = document.getElementById('soalList');
-    list.innerHTML = '';
-    shuffled.forEach((s, idx)=>{
-      const div = document.createElement('div');
-      div.className = 'soal-item';
-      div.id = 'item-'+idx;
-      div.innerHTML = `
-        <div class="soal-left">
-          <div style="font-weight:700">Soal ${idx+1}</div>
-          <div style="margin-top:6px">${escapeHtml(s.pertanyaan)}</div>
-        </div>
-        <div style="min-width:260px;text-align:right">
-          <input id="inp-${idx}" placeholder="jawaban..." style="padding:6px;border-radius:6px;border:1px solid #ddd">
-          <div style="height:6px"></div>
-          <button onclick="submitAnswer(${idx})">Kirim</button>
-          <div id="res-${idx}" style="margin-top:8px;color:#055"></div>
-        </div>`;
-      list.appendChild(div);
-    });
-    updateTokensDisplay();
-  }
-
-  // submit
-  function submitAnswer(i){
-    const val = document.getElementById('inp-'+i).value.trim().toLowerCase();
-    if(!val){ Swal.fire('Kosong','Masukkan jawaban','warning'); return; }
-    const correct = (shuffled[i].jawaban || shuffled[i].kunci || shuffled[i].kunciJawaban || '').toLowerCase();
-    if(val === correct){
-      // reveal token (word)
-      const token = shuffled[i].kunci || shuffled[i].token || shuffled[i].huruf || shuffled[i].kata || '??';
-      tokens[i] = token;
-      document.getElementById('res-'+i).innerHTML = '✅ Benar! Token: <span class="token-pill">'+token+'</span>';
-      document.getElementById('inp-'+i).disabled = true;
-      document.querySelector('#item-'+i+' button').disabled = true;
-      playSound('cling');
-      Swal.fire({title:'Benar! 🎉',text:'Token: '+token,icon:'success',timer:1100,showConfirmButton:false})
-        .then(()=> confetti({particleCount:40,spread:60}));
-      updateProgressInDB();
-      updateTokensDisplay();
-      checkAllDone();
-    } else {
-      // wrong: shake + buzz
-      const el = document.getElementById('item-'+i);
-      el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
-      playSound('buzz');
-      Swal.fire({title:'Salah 😢',text:'Coba lagi',icon:'error',timer:900,showConfirmButton:false});
+/* -------------------------
+   LOAD GAME
+   ------------------------- */
+function loadGame(){
+  db.ref('/game/current').once('value').then(snap=>{
+    const val = snap.val();
+    if(!val || !val.soal || !val.soal.length){
+      Swal.fire('Belum ada soal','Minta guru upload soal dulu di admin','warning'); return;
     }
-  }
+    game = val;
+    totalQuestions = game.soal.length;
+    // create order and shuffle
+    order = [...Array(totalQuestions).keys()];
+    shuffleArray(order);
 
-  function updateTokensDisplay(){
-    const el = document.getElementById('tokens');
-    el.textContent = tokens.map(t=> t? t : '—').join('  •  ');
-  }
-
-  function initProgress(){
-    const payload = {
-      benar: 0,
-      total: total,
-      tokens: tokens,
-      waktuRemaining: waktu,
-      started: true,
-      selesai: false,
-      lastUpdate: Date.now()
-    };
-    db.ref('/progress/'+group).set(payload);
+    tokens = Array(totalQuestions).fill(null);
+    currentIndex = 0;
+    renderQuestion();
+    updateTokensUI();
+    writeProgressToDB();
+    document.getElementById('gameCard').style.display = 'block';
     startTimer();
-  }
+  }).catch(err=>{ console.error(err); Swal.fire('Error','Gagal memuat game: '+err.message,'error') });
+}
 
-  function updateProgressInDB(){
-    const benarCount = tokens.filter(x=>x).length;
-    db.ref('/progress/'+group).update({
-      benar: benarCount,
-      tokens: tokens,
-      waktuRemaining: waktu,
-      lastUpdate: Date.now()
-    });
-  }
+/* -------------------------
+   RENDER & NAVIGATION
+   ------------------------- */
+function renderQuestion(){
+  const idx = order[currentIndex];
+  const q = game.soal[idx];
+  document.getElementById('soalText').innerHTML = `<div style="font-weight:700">Soal ${currentIndex+1} / ${totalQuestions}</div><div style="margin-top:6px">${escapeHtml(q.pertanyaan)}</div>`;
+  document.getElementById('answerInput').value = '';
+  document.getElementById('feedback').textContent = '';
+  // update status
+  document.getElementById('statusSmall').textContent = `Mengerjakan soal ${currentIndex+1} dari ${totalQuestions}`;
+  // update timer UI
+  timer = perQuestionTime;
+  document.getElementById('timer').textContent = `00:${String(timer).padStart(2,'0')}`;
+}
 
-  function checkAllDone(){
-    const done = tokens.filter(x=>x).length;
-    if(done === total){
-      finish(true);
-    }
-  }
+/* -------------------------
+   SUBMIT & ANSWER LOGIC
+   ------------------------- */
+document.getElementById('submitBtn').addEventListener('click', ()=> tryAnswer() );
+document.getElementById('answerInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryAnswer(); });
+document.getElementById('skipBtn').addEventListener('click', ()=>{
+  // Skip acts like wrong (per permintaan: treated as wrong and move back)
+  handleWrong();
+});
 
-  // timer
-  function startTimer(){
-    if(timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(()=>{
-      waktu--;
-      const mm = String(Math.floor(waktu/60)).padStart(2,'0');
-      const ss = String(waktu%60).padStart(2,'0');
-      document.getElementById('timer').textContent = mm+':'+ss;
-      if(waktu % 5 === 0) updateProgressInDB();
-      if(waktu <= 0){ clearInterval(timerInterval); finish(false); }
-    },1000);
-  }
-
-  function finish(success){
-    if(timerInterval) clearInterval(timerInterval);
-    db.ref('/progress/'+group).update({selesai: success, waktuRemaining: waktu, lastUpdate: Date.now()});
-    if(success){
-      // show final message + flag + confetti
-      document.getElementById('flagDiv').style.display = 'block';
-      document.getElementById('flagDiv').style.transform = 'scale(0)';
-      document.getElementById('flagDiv').style.transition = 'transform .6s ease';
-      setTimeout(()=> document.getElementById('flagDiv').style.transform = 'scale(1)', 50);
-      confetti({particleCount:200,spread:140});
-      Swal.fire({title:'Selamat!',html:'<b>Selamat, kamu menemukan kata rahasia!</b>',icon:'success'}).then(()=>{
-        // optional: redirect to leaderboard or admin
-      });
+function tryAnswer(){
+  const val = document.getElementById('answerInput').value.trim().toLowerCase();
+  if(val===''){ Swal.fire({icon:'warning',title:'Kosong',text:'Tulis jawaban dulu'}); return; }
+  const idx = order[currentIndex];
+  const q = game.soal[idx];
+  const good = (q.jawaban || q.kunci || q.kunciJawaban || q.answer || '').toString().toLowerCase();
+  if(val === good){
+    // correct
+    const token = (q.kunci_token || q.kunci || q.token || q.kata || q.huruf) || q.kunci || '—';
+    tokens[currentIndex] = token;
+    updateTokensUI();
+    playSound('sndCling');
+    Swal.fire({title:'Benar! 🎉',text:'Token: '+token,icon:'success',timer:1000,showConfirmButton:false})
+      .then(()=> confetti({particleCount:40,spread:60}));
+    writeProgressToDB();
+    // advance to next question (if not last)
+    if(currentIndex < totalQuestions-1){
+      currentIndex++;
+      renderQuestion();
     } else {
-      Swal.fire({title:'Waktu Habis',text:'Permainan selesai — minta guru cek progres',icon:'warning'});
+      // all answered? check all tokens present
+      if(tokens.filter(x=>x).length === totalQuestions){
+        finishGame(true);
+      } else {
+        // if not all tokens (rare) advance anyway
+        renderQuestion();
+      }
     }
+  } else {
+    // wrong -> go back to previous question (if exists), else stay
+    handleWrong();
   }
+}
 
-  // helpers
-  function shuffle(a){ for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} }
-  function escapeHtml(s){ if(!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function playSound(kind){ try{ if(kind==='cling') document.getElementById('sndCling').play(); else document.getElementById('sndBuzz').play(); }catch(e){} }
+function handleWrong(){
+  playSound('sndBuzz');
+  // visual shake on question card
+  const qa = document.getElementById('questionArea');
+  qa.classList.remove('shake'); void qa.offsetWidth; qa.classList.add('shake');
+  Swal.fire({title:'Salah',text:'Kembali ke soal sebelumnya',icon:'error',timer:800,showConfirmButton:false})
+    .then(()=>{
+      if(currentIndex > 0) currentIndex--;
+      renderQuestion();
+      writeProgressToDB();
+    });
+}
 
-  // start
-  loadGame();
+/* -------------------------
+   TIMER (per question)
+   ------------------------- */
+function startTimer(){
+  if(timerInterval) clearInterval(timerInterval);
+  timer = perQuestionTime;
+  document.getElementById('timer').textContent = `00:${String(timer).padStart(2,'0')}`;
+  timerInterval = setInterval(()=>{
+    timer--;
+    if(timer < 0) timer = 0;
+    document.getElementById('timer').textContent = `00:${String(timer).padStart(2,'0')}`;
+    // update every 5 sec to DB
+    if(timer % 5 === 0) writeProgressToDB();
+    if(timer === 0){
+      // time up = treated as wrong -> go back to previous question
+      if(timerInterval) clearInterval(timerInterval);
+      handleWrong();
+      // restart timer after small delay
+      setTimeout(()=> startTimer(), 900);
+    }
+  },1000);
+}
 
+/* -------------------------
+   FINISH
+   ------------------------- */
+function finishGame(success){
+  if(timerInterval) clearInterval(timerInterval);
+  db.ref('/progress/'+GROUP).update({selesai: success, waktuRemaining: timer, lastUpdate: Date.now()});
+  if(success){
+    // show flag + confetti + message
+    document.getElementById('flagDiv').style.display = 'block';
+    document.getElementById('flagDiv').style.transform = 'scale(0)';
+    setTimeout(()=> document.getElementById('flagDiv').style.transform = 'scale(1)', 60);
+    confetti({particleCount:200,spread:140});
+    Swal.fire({title:'Selamat!',html:'<b>Selamat, kamu menemukan kata rahasia!</b>',icon:'success'});
+  } else {
+    Swal.fire({title:'Waktu Habis',text:'Permainan selesai. Minta guru cek progres',icon:'warning'});
+  }
+}
+
+/* -------------------------
+   BGM control
+   ------------------------- */
+const bgm = document.getElementById('bgm');
+const toggleBgm = document.getElementById('toggleBgm');
+toggleBgm.addEventListener('click', ()=>{
+  bgmOn = !bgmOn;
+  if(bgmOn){ bgm.play().catch(()=>{}); toggleBgm.textContent='BGM: On'; }
+  else { bgm.pause(); toggleBgm.textContent='BGM: Off'; }
+});
+window.addEventListener('load', ()=> { if(bgmOn) { bgm.play().catch(()=>{}); } });
+
+/* -------------------------
+   DB update snapshot (listen to own progress maybe reflect teacher resets)
+   ------------------------- */
+db.ref('/progress/'+GROUP).on('value', snap=>{
+  const v = snap.val();
+  if(!v) return;
+  // if teacher marks selesai or resets, you can handle here
+  if(v.selesai === true){
+    finishGame(true);
+  }
+});
+
+/* -------------------------
+   START
+   ------------------------- */
+loadGame();
+
+/* -------------------------
+   small helpers
+   ------------------------- */
+function escapeHtml(s){ if(!s) return ''; return s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>
 </html>
