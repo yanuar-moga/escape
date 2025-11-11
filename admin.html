@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<title>Admin Dashboard - Escape Room (Firebase)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  body{font-family:Inter,Arial,sans-serif;background:linear-gradient(135deg,#f0f9ff,#e6ffe9);margin:0;padding:20px}
+  .wrap{max-width:1000px;margin:0 auto}
+  .header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h1{margin:0}
+  .card{background:#fff;padding:14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.06);margin-top:14px}
+  .row{display:flex;gap:8px}
+  input,textarea,select{width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef2}
+  button{padding:10px 12px;border-radius:8px;border:none;background:#0ea5a4;color:white;cursor:pointer}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;border-bottom:1px solid #eef6f6;text-align:left}
+  .small{font-size:13px;color:#556}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>Admin Dashboard — Escape Room</h1>
+        <div class="small">Kelola soal & pantau progres tim (Realtime via Firebase)</div>
+      </div>
+      <div>
+        <input type="file" id="fileInput">
+        <button onclick="uploadJSON()">Upload admin.json</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Soal (Tambah / Edit)</h3>
+      <div id="formArea"></div>
+      <div style="margin-top:8px">
+        <input id="kalimat" placeholder="Kalimat misteri lengkap (misal: BELAJAR INFORMATIKA ASYIK)">
+      </div>
+      <div style="margin-top:10px" class="row">
+        <button onclick="addSoal()">+ Tambah Soal</button>
+        <button onclick="saveToFirebase()">💾 Simpan ke Firebase</button>
+        <button onclick="downloadJSON()">⬇️ Download admin.json</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Monitoring Progres (Realtime)</h3>
+      <div class="small">Tabel ini update otomatis.</div>
+      <table id="progressTable">
+        <thead><tr><th>Kelompok</th><th>Benar</th><th>Total</th><th>Persentase</th><th>Waktu Tersisa</th><th>Status</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div style="margin-top:8px" class="row">
+        <button onclick="clearProgress()">Reset Progres</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- load config.js (make sure file exists and contains firebaseConfig) -->
+  <script src="config.js"></script>
+
+  <script>
+    // initialize firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // form dynamic
+    let count = 0;
+    function addSoal(q='', k='', h=''){
+      count++;
+      const container = document.getElementById('formArea');
+      const div = document.createElement('div');
+      div.id = 'card-'+count;
+      div.style = 'background:#f8fff9;padding:10px;border-radius:8px;margin-bottom:8px';
+      div.innerHTML = `
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label>Pertanyaan ${count}</label>
+            <textarea id="q${count}" rows="2">${q}</textarea>
+          </div>
+          <div style="width:220px">
+            <label>Jawaban</label>
+            <input id="k${count}" value="${k}">
+            <label>Huruf (1 char)</label>
+            <input id="h${count}" maxlength="1" value="${h}">
+            <div style="margin-top:6px"><button onclick="removeCard(${count})" style="background:#ef4444">Hapus</button></div>
+          </div>
+        </div>`;
+      container.appendChild(div);
+    }
+    function removeCard(i){const el=document.getElementById('card-'+i); if(el) el.remove();}
+
+    // init 6 default slots
+    for(let i=0;i<6;i++) addSoal();
+
+    // upload admin.json from local -> fill form
+    function uploadJSON(){
+      const f = document.getElementById('fileInput').files[0];
+      if(!f){ alert('Pilih file admin.json dulu'); return; }
+      const r = new FileReader();
+      r.onload = e => {
+        try{
+          const data = JSON.parse(e.target.result);
+          document.getElementById('formArea').innerHTML = ''; count=0;
+          (data.soal||[]).forEach(s => addSoal(s.pertanyaan, s.kunci, s.huruf));
+          document.getElementById('kalimat').value = data.kalimat || '';
+          alert('File berhasil di-load ke form');
+        }catch(err){ alert('File JSON tidak valid') }
+      };
+      r.readAsText(f);
+    }
+
+    // download current form -> admin.json
+    function downloadJSON(){
+      const payload = gatherData();
+      const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'admin.json'; a.click();
+    }
+
+    function gatherData(){
+      const soal=[];
+      for(let i=1;i<=count;i++){
+        const q = document.getElementById('q'+i)?.value || '';
+        const k = document.getElementById('k'+i)?.value || '';
+        const h = document.getElementById('h'+i)?.value || '';
+        if(q&&k&&h) soal.push({pertanyaan:q, kunci:k, huruf:h});
+      }
+      const kal = document.getElementById('kalimat').value || '';
+      return { soal: soal, kalimat: kal };
+    }
+
+    // save to firebase under /game/current
+    function saveToFirebase(){
+      const payload = gatherData();
+      if(!payload.soal.length){ alert('Isi soal dulu!'); return; }
+      db.ref('/game/current').set(payload)
+        .then(()=> alert('✅ Data game tersimpan ke Firebase (/game/current)'))
+        .catch(err=> alert('Gagal: '+err.message));
+    }
+
+    // realtime monitor /progress
+    const progressTableBody = document.querySelector('#progressTable tbody');
+    function renderProgress(snapshot){
+      const data = snapshot.val() || {};
+      progressTableBody.innerHTML = '';
+      Object.keys(data).forEach(k => {
+        const row = data[k];
+        const benar = row.benar || 0;
+        const total = row.total || (row.total === 0 ? 0 : '?');
+        const perc = total ? Math.round((benar/total)*100) : 0;
+        const waktu = row.waktuRemaining ?? '-';
+        const status = row.selesai ? 'Selesai' : (row.started ? 'Proses' : 'Belum mulai');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${k}</td><td>${benar}</td><td>${total}</td><td>${perc}%</td><td>${waktu}</td><td>${status}</td>`;
+        progressTableBody.appendChild(tr);
+      });
+    }
+    db.ref('/progress').on('value', renderProgress);
+
+    // reset progress (hapus node /progress)
+    function clearProgress(){
+      if(confirm('Reset semua progres?')) {
+        db.ref('/progress').remove().then(()=> alert('Progress reset'));
+      }
+    }
+
+  </script>
+</body>
+</html>
