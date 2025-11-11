@@ -1,343 +1,258 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Game — Escape Room (Kelompok)</title>
-
-<!-- SweetAlert2 & Confetti -->
-<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-
-<!-- Firebase compat -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escape Room Informatika</title>
 
 <style>
-  :root{--accent:#0ea5a4;--danger:#ef4444}
-  body{font-family:Inter,system-ui,Arial;margin:0;background:linear-gradient(180deg,#eef9ff,#ffffff);padding:18px}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  .avatar{display:flex;align-items:center;gap:12px}
-  .avatar img{width:72px;height:72px;border-radius:12px;object-fit:cover;box-shadow:0 8px 18px rgba(10,30,60,0.06)}
-  .card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 10px 30px rgba(8,20,40,0.04);margin-top:14px}
-  #timer{font-weight:800;color:#b91c1c;font-size:20px}
-  .question-area{margin-top:12px}
-  .soal-text{font-size:18px;margin-bottom:12px}
-  .control{display:flex;gap:10px;align-items:center}
-  input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid #e6f3f3}
-  button{padding:10px 14px;border-radius:8px;border:none;background:var(--accent);color:#023;cursor:pointer;font-weight:700}
-  button.secondary{background:#fff;border:1px solid #e6f3f3;color:#024}
-  .tokens{margin-top:14px;font-weight:700;color:#036}
-  .token-pill{display:inline-block;padding:6px 10px;border-radius:999px;background:#f0f9ff;color:#036;margin-right:6px;margin-top:6px}
-  .flag{position:fixed;right:18px;top:90px;display:none;z-index:999}
-  .flag img{width:120px}
-  .bpm{font-size:13px;color:#444}
-  .mute-btn{background:#fff;border:1px solid #e6eef0;padding:8px;border-radius:8px;cursor:pointer}
-  .small{font-size:13px;color:#456}
-  .shake{animation:shake .6s}
-  @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-6px)}100%{transform:translateX(0)}}
-  @media(max-width:640px){ .avatar img{width:56px;height:56px} input[type=text]{padding:8px} }
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(120deg,#4da3ff,#007bff);
+    color:#fff;
+    margin:0;
+    padding:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  #game-box {
+    width:90%;
+    max-width:850px;
+    background:#ffffff20;
+    padding:20px;
+    border-radius:14px;
+    text-align:center;
+    box-shadow:0 0 15px rgba(0,0,0,.25);
+    animation: fadeIn .8s ease;
+    backdrop-filter: blur(3px);
+  }
+
+  @keyframes fadeIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+
+  .avatar {
+    position:absolute;
+    top:14px; left:14px;
+    width:60px; height:60px;
+    border-radius:50%;
+    border:2px solid #fff;
+  }
+
+  #timer {
+    font-size:23px;
+    font-weight:600;
+    margin:10px;
+    color:#ffd84c;
+  }
+
+  .question-box {
+    font-size:20px;
+    margin-top:10px;
+    margin-bottom:20px;
+    color:#fff;
+  }
+
+  .answers button {
+    width:80%;
+    max-width:500px;
+    margin:8px auto;
+    padding:10px;
+    font-size:15px;
+    border:none;
+    border-radius:8px;
+    background:#ffd84c;
+    color:#000;
+    cursor:pointer;
+    transition:.25s;
+  }
+
+  .answers button:hover { transform:scale(1.05) }
+
+  .popup {
+    position:fixed;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    background:#fff;
+    padding:18px 22px;
+    border-radius:10px;
+    color:#333;
+    font-size:20px;
+    display:none;
+    box-shadow:0 0 12px rgba(0,0,0,.3);
+  }
+
+  .popup.show { display:block }
+
+  #win-screen {
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:rgba(0,0,0,.8);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    color:#fff;
+    font-size:30px;
+    display:none;
+  }
+
+  #win-screen img {
+    width:180px;
+    margin-bottom:10px;
+    animation:bounce 1s infinite;
+  }
+
+  @keyframes bounce {
+    0% { transform:translateY(0) }
+    50% { transform:translateY(-10px) }
+    100% { transform:translateY(0) }
+  }
 </style>
 </head>
 <body>
 
-<div class="top">
-  <div class="avatar">
-    <img id="avatarImg" src="assets/avatars/ninja-cat.png" alt="avatar">
-    <div>
-      <div id="groupName" style="font-weight:800">KELOMPOK</div>
-      <div class="small" id="statusSmall">Siap bermain — Semoga beruntung!</div>
-    </div>
-  </div>
-
-  <div style="text-align:right">
-    <div id="timer">00:30</div>
-    <div class="small">Waktu sisa (per soal)</div>
-    <div style="height:8px"></div>
-    <button class="mute-btn" id="toggleBgm">BGM: On</button>
-  </div>
+<img class="avatar" id="avatar">
+<div id="game-box">
+  <div id="timer">00:30</div>
+  <div class="question-box" id="question-text">Memuat soal...</div>
+  <div class="answers" id="answer-buttons"></div>
 </div>
 
-<div class="card" id="gameCard" style="display:none">
-  <h3 style="margin:0 0 8px 0">Escape Room — Bab 5: Komputer & Jaringan</h3>
-  <div class="small">Jawab benar untuk mendapatkan 1 kata misteri per soal. 10 kata total.</div>
+<div class="popup" id="popupInfo">Huruf Misteri: A</div>
 
-  <div class="question-area" id="questionArea">
-    <!-- Per soal area -->
-    <div class="soal-text" id="soalText">Memuat soal...</div>
-
-    <div class="control">
-      <input type="text" id="answerInput" placeholder="Ketik jawaban...">
-      <button id="submitBtn">Kirim</button>
-      <button id="skipBtn" class="secondary">Skip (menter)</button>
-    </div>
-
-    <div id="feedback" class="small" style="margin-top:10px;color:#055"></div>
-
-    <div class="tokens" id="tokensArea">Tokens terkumpul: <div id="tokensList" style="margin-top:8px"></div></div>
-  </div>
+<div id="win-screen">
+  <img src="assets/img/flag.png">
+  <div>Selamat, kamu menemukan kata rahasia!</div>
 </div>
 
-<!-- flag and confetti -->
-<div class="flag" id="flagDiv"><img src="assets/icon/flag.png" alt="flag"></div>
+<!-- AUDIO -->
+<audio id="audioCorrect" src="assets/sound/cling.mp3"></audio>
+<audio id="audioWrong" src="assets/sound/buzz.mp3"></audio>
+<audio id="audioWin" src="assets/sound/win.mp3"></audio>
 
-<!-- audio -->
-<audio id="bgm" loop src="assets/sound/bgm-adventure.mp3"></audio>
-<audio id="sndCling" src="https://assets.mixkit.co/sfx/preview/mixkit-game-notification-positive-2683.mp3"></audio>
-<audio id="sndBuzz" src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3"></audio>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+  import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js";
 
-<!-- firebase config (you provided) -->
-<script>
+  // Firebase
   const firebaseConfig = {
-  apiKey: "AIzaSyBr-nd0dxZl5q6DLPxMKLybJ7MyBc9kaBc",
-  authDomain: "realtime-database-f59b8.firebaseapp.com",
-  databaseURL: "https://realtime-database-f59b8-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "realtime-database-f59b8",
-  storageBucket: "realtime-database-f59b8.firebasestorage.app",
-  messagingSenderId: "320982155387",
-  appId: "1:320982155387:web:df67817761e282dee4a2de"
+    apiKey: "AIzaSyBr-nd0dxZl5q6DLPxMKLybJ7MyBc9kaBc",
+    authDomain: "realtime-database-f59b8.firebaseapp.com",
+    databaseURL: "https://realtime-database-f59b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "realtime-database-f59b8",
+    storageBucket: "realtime-database-f59b8.firebasestorage.app",
+    messagingSenderId: "320982155387",
+    appId: "1:320982155387:web:df67817761e282dee4a2de"
   };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-</script>
+  
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-<script>
-/* -------------------------
-   STATE & CONFIG
-   ------------------------- */
-const avatars = {
-  kelompok1: 'assets/avatars/ninja-cat.png',
-  kelompok2: 'assets/avatars/robot.png',
-  kelompok3: 'assets/avatars/alien.png',
-  kelompok4: 'assets/avatars/chicken.png',
-  kelompok5: 'assets/avatars/panda.png',
-  kelompok6: 'assets/avatars/dino.png'
-};
+  // Ambil data login
+  const urlParams = new URLSearchParams(window.location.search);
+  const kelompok = urlParams.get("kelompok");
+  const avatarPic = urlParams.get("avatar");
 
-const GROUP = sessionStorage.getItem('kelompok') || localStorage.getItem('kelompok');
-const AV = sessionStorage.getItem('avatar') || localStorage.getItem('avatar');
-if(!GROUP){ alert('Kelompok tidak ditemukan — kembali ke login'); location.href='login.html'; }
+  document.getElementById("avatar").src = avatarPic;
 
-document.getElementById('groupName').textContent = GROUP.toUpperCase();
-document.getElementById('avatarImg').src = AV || avatars[GROUP] || 'assets/avatars/ninja-cat.png';
+  let questions = [];
+  let currentIndex = 0;
+  let timerInterval;
 
-let game = null;           // full game object from /game/current
-let order = [];            // array of indices after shuffle
-let currentIndex = 0;      // index in "order" (which points into game.soal)
-let tokens = [];           // tokens collected (length = total)
-let totalQuestions = 0;
-let perQuestionTime = 30;  // seconds per question
-let timer = perQuestionTime;
-let timerInterval = null;
-let bgmOn = true;
-
-/* -------------------------
-   UTILS
-   ------------------------- */
-function shuffleArray(a){
-  for(let i=a.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [a[i],a[j]]=[a[j],a[i]];
-  }
-}
-function playSound(id){ try{ document.getElementById(id).currentTime = 0; document.getElementById(id).play(); }catch(e){} }
-function updateTokensUI(){
-  const el = document.getElementById('tokensList');
-  el.innerHTML = '';
-  tokens.forEach(t=>{
-    const span = document.createElement('span');
-    span.className = 'token-pill';
-    span.textContent = t ? t : '—';
-    el.appendChild(span);
-  });
-}
-function writeProgressToDB(){
-  const payload = {
-    benar: tokens.filter(x=>x).length,
-    total: totalQuestions,
-    tokens: tokens,
-    currentIndex: currentIndex,
-    waktuRemaining: timer,
-    started: true,
-    selesai: false,
-    lastUpdate: Date.now()
-  };
-  db.ref('/progress/'+GROUP).set(payload).catch(e=>console.warn(e));
-}
-
-/* -------------------------
-   LOAD GAME
-   ------------------------- */
-function loadGame(){
-  db.ref('/game/current').once('value').then(snap=>{
-    const val = snap.val();
-    if(!val || !val.soal || !val.soal.length){
-      Swal.fire('Belum ada soal','Minta guru upload soal dulu di admin','warning'); return;
+  // Ambil soal dan kata misteri dari Firebase
+  async function loadQuestions(){
+    const snap = await get(ref(db, "soal"));
+    if(!snap.exists()) {
+      document.getElementById("question-text").innerText = "Belum ada soal di database.";
+      return;
     }
-    game = val;
-    totalQuestions = game.soal.length;
-    // create order and shuffle
-    order = [...Array(totalQuestions).keys()];
-    shuffleArray(order);
 
-    tokens = Array(totalQuestions).fill(null);
-    currentIndex = 0;
-    renderQuestion();
-    updateTokensUI();
-    writeProgressToDB();
-    document.getElementById('gameCard').style.display = 'block';
-    startTimer();
-  }).catch(err=>{ console.error(err); Swal.fire('Error','Gagal memuat game: '+err.message,'error') });
-}
+    questions = Object.values(snap.val());
+    showQuestion();
+  }
 
-/* -------------------------
-   RENDER & NAVIGATION
-   ------------------------- */
-function renderQuestion(){
-  const idx = order[currentIndex];
-  const q = game.soal[idx];
-  document.getElementById('soalText').innerHTML = `<div style="font-weight:700">Soal ${currentIndex+1} / ${totalQuestions}</div><div style="margin-top:6px">${escapeHtml(q.pertanyaan)}</div>`;
-  document.getElementById('answerInput').value = '';
-  document.getElementById('feedback').textContent = '';
-  // update status
-  document.getElementById('statusSmall').textContent = `Mengerjakan soal ${currentIndex+1} dari ${totalQuestions}`;
-  // update timer UI
-  timer = perQuestionTime;
-  document.getElementById('timer').textContent = `00:${String(timer).padStart(2,'0')}`;
-}
+  function startTimer(){
+    let time = 30;
+    document.getElementById("timer").innerText = "00:30";
 
-/* -------------------------
-   SUBMIT & ANSWER LOGIC
-   ------------------------- */
-document.getElementById('submitBtn').addEventListener('click', ()=> tryAnswer() );
-document.getElementById('answerInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryAnswer(); });
-document.getElementById('skipBtn').addEventListener('click', ()=>{
-  // Skip acts like wrong (per permintaan: treated as wrong and move back)
-  handleWrong();
-});
+    timerInterval = setInterval(()=>{
+      time--;
+      document.getElementById("timer").innerText = "00:" + (time<10?"0"+time:time);
 
-function tryAnswer(){
-  const val = document.getElementById('answerInput').value.trim().toLowerCase();
-  if(val===''){ Swal.fire({icon:'warning',title:'Kosong',text:'Tulis jawaban dulu'}); return; }
-  const idx = order[currentIndex];
-  const q = game.soal[idx];
-  const good = (q.jawaban || q.kunci || q.kunciJawaban || q.answer || '').toString().toLowerCase();
-  if(val === good){
-    // correct
-    const token = (q.kunci_token || q.kunci || q.token || q.kata || q.huruf) || q.kunci || '—';
-    tokens[currentIndex] = token;
-    updateTokensUI();
-    playSound('sndCling');
-    Swal.fire({title:'Benar! 🎉',text:'Token: '+token,icon:'success',timer:1000,showConfirmButton:false})
-      .then(()=> confetti({particleCount:40,spread:60}));
-    writeProgressToDB();
-    // advance to next question (if not last)
-    if(currentIndex < totalQuestions-1){
-      currentIndex++;
-      renderQuestion();
-    } else {
-      // all answered? check all tokens present
-      if(tokens.filter(x=>x).length === totalQuestions){
-        finishGame(true);
-      } else {
-        // if not all tokens (rare) advance anyway
-        renderQuestion();
+      if(time <= 0){
+        clearInterval(timerInterval);
+        wrongAnswer(); // waktu habis = salah
       }
-    }
-  } else {
-    // wrong -> go back to previous question (if exists), else stay
-    handleWrong();
+    },1000);
   }
-}
 
-function handleWrong(){
-  playSound('sndBuzz');
-  // visual shake on question card
-  const qa = document.getElementById('questionArea');
-  qa.classList.remove('shake'); void qa.offsetWidth; qa.classList.add('shake');
-  Swal.fire({title:'Salah',text:'Kembali ke soal sebelumnya',icon:'error',timer:800,showConfirmButton:false})
-    .then(()=>{
-      if(currentIndex > 0) currentIndex--;
-      renderQuestion();
-      writeProgressToDB();
+  function showQuestion(){
+    if(currentIndex >= questions.length){
+      win();
+      return;
+    }
+
+    const q = questions[currentIndex];
+    document.getElementById("question-text").innerText = q.question;
+    document.getElementById("answer-buttons").innerHTML = "";
+
+    let opts = [q.a, q.b, q.c, q.d].sort(()=>Math.random()-0.5);
+
+    opts.forEach(txt=>{
+      const btn = document.createElement("button");
+      btn.innerText = txt;
+      btn.onclick = ()=> checkAnswer(txt === q.correct, q.mysteryLetter);
+      document.getElementById("answer-buttons").appendChild(btn);
     });
-}
 
-/* -------------------------
-   TIMER (per question)
-   ------------------------- */
-function startTimer(){
-  if(timerInterval) clearInterval(timerInterval);
-  timer = perQuestionTime;
-  document.getElementById('timer').textContent = `00:${String(timer).padStart(2,'0')}`;
-  timerInterval = setInterval(()=>{
-    timer--;
-    if(timer < 0) timer = 0;
-    document.getElementById('timer').textContent = `00:${String(timer).padStart(2,'0')}`;
-    // update every 5 sec to DB
-    if(timer % 5 === 0) writeProgressToDB();
-    if(timer === 0){
-      // time up = treated as wrong -> go back to previous question
-      if(timerInterval) clearInterval(timerInterval);
-      handleWrong();
-      // restart timer after small delay
-      setTimeout(()=> startTimer(), 900);
+    startTimer();
+  }
+
+  function checkAnswer(isCorrect, letter){
+    clearInterval(timerInterval);
+
+    if(isCorrect){
+      document.getElementById("audioCorrect").play();
+      showPopup(letter);
+      saveProgress(currentIndex+1);
+      currentIndex++;
+      setTimeout(showQuestion,1200);
+    }else{
+      wrongAnswer();
     }
-  },1000);
-}
-
-/* -------------------------
-   FINISH
-   ------------------------- */
-function finishGame(success){
-  if(timerInterval) clearInterval(timerInterval);
-  db.ref('/progress/'+GROUP).update({selesai: success, waktuRemaining: timer, lastUpdate: Date.now()});
-  if(success){
-    // show flag + confetti + message
-    document.getElementById('flagDiv').style.display = 'block';
-    document.getElementById('flagDiv').style.transform = 'scale(0)';
-    setTimeout(()=> document.getElementById('flagDiv').style.transform = 'scale(1)', 60);
-    confetti({particleCount:200,spread:140});
-    Swal.fire({title:'Selamat!',html:'<b>Selamat, kamu menemukan kata rahasia!</b>',icon:'success'});
-  } else {
-    Swal.fire({title:'Waktu Habis',text:'Permainan selesai. Minta guru cek progres',icon:'warning'});
   }
-}
 
-/* -------------------------
-   BGM control
-   ------------------------- */
-const bgm = document.getElementById('bgm');
-const toggleBgm = document.getElementById('toggleBgm');
-toggleBgm.addEventListener('click', ()=>{
-  bgmOn = !bgmOn;
-  if(bgmOn){ bgm.play().catch(()=>{}); toggleBgm.textContent='BGM: On'; }
-  else { bgm.pause(); toggleBgm.textContent='BGM: Off'; }
-});
-window.addEventListener('load', ()=> { if(bgmOn) { bgm.play().catch(()=>{}); } });
-
-/* -------------------------
-   DB update snapshot (listen to own progress maybe reflect teacher resets)
-   ------------------------- */
-db.ref('/progress/'+GROUP).on('value', snap=>{
-  const v = snap.val();
-  if(!v) return;
-  // if teacher marks selesai or resets, you can handle here
-  if(v.selesai === true){
-    finishGame(true);
+  function wrongAnswer(){
+    document.getElementById("audioWrong").play();
+    if(currentIndex > 0) currentIndex--;
+    setTimeout(showQuestion,800);
   }
-});
 
-/* -------------------------
-   START
-   ------------------------- */
-loadGame();
+  function showPopup(letter){
+    const pop = document.getElementById("popupInfo");
+    pop.innerText = "Huruf Misteri: " + letter;
+    pop.classList.add("show");
+    setTimeout(()=> pop.classList.remove("show"), 1000);
+  }
 
-/* -------------------------
-   small helpers
-   ------------------------- */
-function escapeHtml(s){ if(!s) return ''; return s.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function saveProgress(progress){
+    update(ref(db, "progress/"+kelompok), {
+      current: progress,
+      lastUpdate: Date.now()
+    });
+  }
+
+  function win(){
+    document.getElementById("audioWin").play();
+    document.getElementById("win-screen").style.display = "flex";
+  }
+
+  loadQuestions();
 </script>
+
 </body>
 </html>
