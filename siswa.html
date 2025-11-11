@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<title>Escape Room - Siswa</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet"/>
+<style>
+  body{font-family:Inter,Arial,sans-serif;background:linear-gradient(180deg,#e6f7ff,#fefefe);margin:0;padding:18px}
+  .wrap{max-width:900px;margin:0 auto}
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .card{background:white;padding:14px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.06);margin-top:12px}
+  .login-area{max-width:420px;margin:auto}
+  input{padding:8px;border-radius:8px;border:1px solid #eef6f6;width:100%}
+  button{padding:10px 12px;border-radius:8px;border:none;background:#0ea5a4;color:white;cursor:pointer}
+  .avatar{font-size:48px}
+  .soal{margin-top:12px}
+  .soal-item{padding:10px;border-radius:8px;border:1px dashed #e6f7f7;margin-bottom:8px}
+  #timer{font-weight:700;color:#b91c1c}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h2>Escape Room — Bab 5</h2>
+      <div id="infoTop" class="small">Login untuk mulai</div>
+    </div>
+
+    <div class="card login-area" id="loginBox">
+      <h3>Login Kelompok</h3>
+      <input id="username" placeholder="kelompok1..6">
+      <input id="password" placeholder="password">
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="login()">Masuk</button>
+        <button onclick="demoLoad()">Demo (quick test)</button>
+      </div>
+      <div style="margin-top:8px;color:#556;font-size:13px">User: kelompok1..kelompok6 | Password: belajar2025</div>
+    </div>
+
+    <div id="gameArea" class="card" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar" id="avatarChar">🦊</div>
+          <div>
+            <div id="kelompokName" style="font-weight:700">Kelompok</div>
+            <div id="kalimatHint" class="small">Kalimat misteri: (akan muncul ketika ada token)</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div id="timer">--:--</div>
+          <div class="small">Sisa waktu</div>
+        </div>
+      </div>
+
+      <div id="soalList" class="soal"></div>
+
+      <div style="margin-top:12px">
+        <div>Token terkumpul: <span id="tokens">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const avatars = {
+      "kelompok1":"🦊","kelompok2":"🐼","kelompok3":"🐸",
+      "kelompok4":"🐧","kelompok5":"🦁","kelompok6":"🐵"
+    };
+
+    // login
+    let currentGroup = null;
+    let currentGame = null;
+    let shuffled = [];
+    let tokens = [];
+    let total = 0;
+    let waktuSisa = 900;
+    let timerInterval = null;
+
+    function login(){
+      const u = document.getElementById('username').value.trim().toLowerCase();
+      const p = document.getElementById('password').value.trim();
+      if(!avatars[u] || p !== 'belajar2025'){ Swal.fire('Gagal','Username atau password salah','error'); return; }
+      currentGroup = u;
+      document.getElementById('loginBox').style.display='none';
+      document.getElementById('gameArea').style.display='block';
+      document.getElementById('avatarChar').textContent = avatars[u];
+      document.getElementById('kelompokName').textContent = 'Kelompok: ' + u;
+      startLoadGame();
+    }
+
+    function demoLoad(){ // quick demo without firebase (for testing)
+      const demo = {
+        soal:[
+          {pertanyaan:'Apa singkatan CPU?', kunci:'cpu', huruf:'I'},
+          {pertanyaan:'Perangkat yang mengirim paket antar jaringan?', kunci:'router', huruf:'N'}
+        ],
+        kalimat: 'INTERNET'
+      };
+      currentGame = demo;
+      setupGame();
+    }
+
+    // load /game/current
+    function startLoadGame(){
+      db.ref('/game/current').once('value').then(snap => {
+        const data = snap.val();
+        if(!data || !data.soal || !data.soal.length){ Swal.fire('Kosong','Belum ada soal. Minta guru simpan di admin.','warning'); return; }
+        currentGame = data;
+        setupGame();
+      });
+    }
+
+    function setupGame(){
+      // shuffle order for fairness
+      const indices = currentGame.soal.map((_,i)=>i);
+      shuffleArray(indices);
+      shuffled = indices.map(i => currentGame.soal[i]);
+      total = shuffled.length;
+      tokens = Array(total).fill(null);
+
+      // render UI
+      const list = document.getElementById('soalList');
+      list.innerHTML = '';
+      shuffled.forEach((s, idx) => {
+        const div = document.createElement('div');
+        div.className = 'soal-item';
+        div.id = 'item-'+idx;
+        div.innerHTML = `
+          <div><b>Soal ${idx+1}</b></div>
+          <div style="margin-top:6px">${escapeHtml(s.pertanyaan)}</div>
+          <div style="margin-top:8px"><input id="inp-${idx}" placeholder="jawaban..."><button onclick="submitAnswer(${idx})">Kirim</button></div>
+          <div id="res-${idx}" style="margin-top:6px;color:#055"></div>
+        `;
+        list.appendChild(div);
+      });
+
+      document.getElementById('kalimatHint').textContent = 'Kalimat misteri memiliki ' + (currentGame.kalimat ? currentGame.kalimat.split(' ').length + ' kata' : '?') ;
+      document.getElementById('tokens').textContent = tokens.join(' ');
+      // init progress in DB for this group
+      db.ref('/progress/'+currentGroup).set({
+        benar: 0,
+        total: total,
+        waktuRemaining: waktuSisa,
+        started: true,
+        selesai: false,
+        lastUpdate: Date.now()
+      });
+
+      // start timer
+      startTimer();
+    }
+
+    function submitAnswer(idx){
+      const val = document.getElementById('inp-'+idx).value.trim().toLowerCase();
+      const correct = (shuffled[idx].kunci || '').toLowerCase();
+      if(!val){ Swal.fire('Kosong','Tuliskan jawaban dulu','warning'); return; }
+      if(val === correct){
+        // mark token
+        const token = shuffled[idx].huruf || '?';
+        tokens[idx] = token;
+        document.getElementById('res-'+idx).innerHTML = '✅ Benar! Token: <b>' + token + '</b>';
+        document.getElementById('inp-'+idx).disabled = true;
+        document.querySelector('#item-'+idx+' button').disabled = true;
+        updateTokensAndProgress();
+        // confetti and popup
+        Swal.fire('Benar!','Token: '+token,'success');
+        // check if all done
+        if(tokens.filter(x=>x).length === total){
+          finishGame(true);
+        }
+      } else {
+        Swal.fire('Salah','Coba lagi','error');
+      }
+    }
+
+    function updateTokensAndProgress(){
+      const benar = tokens.filter(x=>x).length;
+      document.getElementById('tokens').textContent = tokens.map(x=>x||'—').join(' ');
+      db.ref('/progress/'+currentGroup).update({
+        benar: benar,
+        total: total,
+        waktuRemaining: waktuSisa,
+        lastUpdate: Date.now()
+      });
+    }
+
+    function startTimer(){
+      if(timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(()=>{
+        waktuSisa--;
+        const mm = Math.floor(waktuSisa/60), ss = waktuSisa%60;
+        document.getElementById('timer').textContent = String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+        // update db every 5 sec
+        if(waktuSisa % 5 === 0) updateTokensAndProgress();
+        if(waktuSisa <= 0) { finishGame(false); }
+      },1000);
+    }
+
+    function finishGame(success){
+      if(timerInterval) clearInterval(timerInterval);
+      db.ref('/progress/'+currentGroup).update({
+        selesai: success,
+        waktuRemaining: waktuSisa,
+        lastUpdate: Date.now()
+      });
+      if(success){
+        Swal.fire('Selamat!','Kelompok Anda berhasil menyelesaikan semua soal 🎉','success');
+      } else {
+        Swal.fire('Waktu Habis','Coba lagi lain waktu','warning');
+      }
+    }
+
+    // util: Fisher-Yates shuffle
+    function shuffleArray(a){
+      for(let i=a.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+    }
+    function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  </script>
+</body>
+</html>
