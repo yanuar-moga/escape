@@ -2,97 +2,90 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Kontrol Game Kata Misteri</title>
+<title>Admin – Upload Soal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js"></script>
+
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #111;
-        color: #fff;
-        text-align: center;
-        padding: 20px;
-    }
-    h1 { color: #00ffea; }
-    .input-box {
-        background: #222;
-        padding: 10px;
-        margin: 10px auto;
-        max-width: 350px;
-        border-radius: 8px;
-    }
-    input {
-        width: 90%;
-        padding: 8px;
-        border-radius: 6px;
-        border: none;
-        margin: 5px;
-    }
-    button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 6px;
-        background: #00ffea;
-        color: #000;
-        font-size: 16px;
-        cursor: pointer;
-        margin-top: 10px;
-    }
-    .kelompok-btn {
-        background: #ffd700;
-        margin: 6px;
-        display: inline-block;
-    }
+body{
+  font-family:Arial;
+  background:#eef6ff;
+  text-align:center;
+  padding:20px;
+}
+.box{
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  max-width:400px;
+  margin:auto;
+  box-shadow:0 3px 10px rgba(0,0,0,.2);
+}
+input,button{
+  padding:10px;
+  border-radius:6px;
+  border:1px solid #ccc;
+  width:100%;
+  margin-bottom:10px;
+}
+button{
+  background:#007bff;
+  color:#fff;
+  border:none;
+}
 </style>
 </head>
 <body>
 
-<h1>ADMIN - Game Kata Misteri</h1>
-<p>Masukkan 10 kata rahasia, lalu pilih kelompok yang mau bermain.</p>
+<h2>Admin Panel Upload Soal</h2>
 
-<div id="inputArea">
-    <div class="input-box"><input id="k1" placeholder="Kata 1"></div>
-    <div class="input-box"><input id="k2" placeholder="Kata 2"></div>
-    <div class="input-box"><input id="k3" placeholder="Kata 3"></div>
-    <div class="input-box"><input id="k4" placeholder="Kata 4"></div>
-    <div class="input-box"><input id="k5" placeholder="Kata 5"></div>
-    <div class="input-box"><input id="k6" placeholder="Kata 6"></div>
-    <div class="input-box"><input id="k7" placeholder="Kata 7"></div>
-    <div class="input-box"><input id="k8" placeholder="Kata 8"></div>
-    <div class="input-box"><input id="k9" placeholder="Kata 9"></div>
-    <div class="input-box"><input id="k10" placeholder="Kata 10"></div>
-</div>
-
-<button onclick="simpanKata()">SIMPAN KATA</button>
-
-<h2 style="margin-top:30px;">Mulai Game Kelompok</h2>
-
-<div id="tombolKelompok" style="display:none;">
-    <button class="kelompok-btn" onclick="mainKelompok(1)">Kelompok 1</button>
-    <button class="kelompok-btn" onclick="mainKelompok(2)">Kelompok 2</button>
-    <button class="kelompok-btn" onclick="mainKelompok(3)">Kelompok 3</button>
-    <button class="kelompok-btn" onclick="mainKelompok(4)">Kelompok 4</button>
-    <button class="kelompok-btn" onclick="mainKelompok(5)">Kelompok 5</button>
-    <button class="kelompok-btn" onclick="mainKelompok(6)">Kelompok 6</button>
+<div class="box">
+  <input type="file" id="fileExcel" accept=".xlsx, .xls">
+  <button onclick="uploadExcel()">Upload Soal</button>
+  <p id="status"></p>
 </div>
 
 <script>
-function simpanKata() {
-    let kata = [];
-    for (let i = 1; i <= 10; i++) {
-        let val = document.getElementById("k" + i).value.trim();
-        if (val === "") {
-            alert("Semua kata harus terisi!");
-            return;
-        }
-        kata.push(val.toLowerCase());
-    }
-    localStorage.setItem("kataMisteri", JSON.stringify(kata));
-    alert("Kata berhasil disimpan!");
-    document.getElementById("tombolKelompok").style.display = "block";
-}
+// ---- Firebase ---------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyBr-nd0dxZl5q6DLPxMKLybJ7MyBc9kaBc",
+  authDomain: "realtime-database-f59b8.firebaseapp.com",
+  databaseURL: "https://realtime-database-f59b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "realtime-database-f59b8",
+  storageBucket: "realtime-database-f59b8.appspot.com",
+  messagingSenderId: "320982155387",
+  appId: "1:320982155387:web:df67817761e282dee4a2de"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-function mainKelompok(no) {
-    window.location.href = "kelompok" + no + ".html";
+// ---- Upload Excel ---------------------------------
+function uploadExcel(){
+  let file = document.getElementById("fileExcel").files[0];
+  if(!file){
+    alert("Pilih file Excel dulu!");
+    return;
+  }
+
+  let reader = new FileReader();
+  reader.onload = function(e){
+    let data = new Uint8Array(e.target.result);
+    let workbook = XLSX.read(data, { type: "array" });
+    let sheetName = workbook.SheetNames[0];
+    let sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    let kata = [];
+    sheet.forEach(row=>{
+      kata.push(row.soal.toLowerCase());
+    });
+
+    firebase.database().ref("kata_misteri").set(kata)
+    .then(()=>{
+      document.getElementById("status").innerHTML = "✅ Upload berhasil! Soal tersimpan di database.";
+    });
+  };
+  reader.readAsArrayBuffer(file);
 }
 </script>
 
