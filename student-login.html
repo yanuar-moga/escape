@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login Kelompok</title>
+<link rel="stylesheet" href="style.css">
+
+<style>
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(120deg, #4da3ff,#007bff);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+  }
+
+  .login-card {
+    background:#fff;
+    border-radius:18px;
+    padding:18px 20px;
+    width:90%;
+    max-width:280px;
+    box-shadow:0 4px 12px rgba(0,0,0,.15);
+    border-top:4px solid #ffd84c;
+    text-align:center;
+    animation: fadeIn .8s ease;
+  }
+
+  @keyframes fadeIn { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
+
+  .login-card img {
+    width:55px;
+    height:55px;
+    border-radius:50%;
+    margin-bottom:8px;
+  }
+
+  h2 {
+    font-size:1.1rem;
+    color:#003f7f;
+    margin:10px 0 18px;
+  }
+
+  input[type=text], input[type=password] {
+    width:100%;
+    padding:7px 8px;
+    margin-bottom:10px;
+    border:1px solid #ccc;
+    border-radius:6px;
+    font-size:13px;
+    box-sizing:border-box;
+  }
+
+  button {
+    width:100%;
+    padding:8px;
+    border:none;
+    border-radius:6px;
+    background:linear-gradient(90deg,#4da3ff,#007bff);
+    color:#fff;
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:.25s;
+  }
+
+  button:hover { transform:scale(1.03); }
+
+  .avatar-list { 
+    display:flex;
+    justify-content:space-around;
+    margin-bottom:10px;
+  }
+
+  .avatar-list img {
+    width:45px; height:45px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+    transition:.25s;
+  }
+  .avatar-list img:hover {
+    transform:scale(1.1);
+    border-color:#007bff;
+  }
+
+  .selected {
+    border-color:#ffbf00 !important;
+    transform:scale(1.13);
+  }
+
+  .footer {
+    margin-top:10px;
+    font-size:10px;
+    color:#777;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="login-card">
+  <img src="assets/logo.png" alt="Logo Sekolah">
+  <h2>Masuk Game</h2>
+
+  <div class="avatar-list">
+    <img src="assets/avatar/cat-ninja.png" onclick="selectAvatar(this)">
+    <img src="assets/avatar/robot.png" onclick="selectAvatar(this)">
+    <img src="assets/avatar/alien.png" onclick="selectAvatar(this)">
+  </div>
+  <div class="avatar-list">
+    <img src="assets/avatar/chicken.png" onclick="selectAvatar(this)">
+    <img src="assets/avatar/panda.png" onclick="selectAvatar(this)">
+    <img src="assets/avatar/dino.png" onclick="selectAvatar(this)">
+  </div>
+
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button type="submit">Masuk</button>
+  </form>
+
+  <div class="footer">© 2025 Game Informatika</div>
+</div>
+
+<script type="module">
+  // Firebase
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBr-nd0dxZl5q6DLPxMKLybJ7MyBc9kaBc",
+    authDomain: "realtime-database-f59b8.firebaseapp.com",
+    databaseURL: "https://realtime-database-f59b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "realtime-database-f59b8",
+    storageBucket: "realtime-database-f59b8.firebasestorage.app",
+    messagingSenderId: "320982155387",
+    appId: "1:320982155387:web:df67817761e282dee4a2de"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  let chosenAvatar = null;
+  function selectAvatar(img){
+    document.querySelectorAll('.avatar-list img').forEach(a=>a.classList.remove('selected'));
+    img.classList.add('selected');
+    chosenAvatar = img.src;
+  }
+
+  document.getElementById("loginForm").addEventListener("submit", (e)=>{
+    e.preventDefault();
+
+    if(!chosenAvatar) return alert("Pilih avatar dulu!");
+
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value.trim();
+
+    // Username & password lokal untuk 6 kelompok
+    const validUsers = {
+      kelompok1:"belajar2025",
+      kelompok2:"belajar2025",
+      kelompok3:"belajar2025",
+      kelompok4:"belajar2025",
+      kelompok5:"belajar2025",
+      kelompok6:"belajar2025",
+    };
+
+    if(!validUsers[user]) return alert("Username salah!");
+    if(validUsers[user] !== pass) return alert("Password salah!");
+
+    window.location.href = `game.html?kelompok=${user}&avatar=${chosenAvatar}`;
+  });
+</script>
+
+</body>
+</html>
