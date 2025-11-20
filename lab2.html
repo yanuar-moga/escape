@@ -64,11 +64,31 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            transition: 0.3s;
+        }
+
+        /* Animasi Glow */
+        .ringan {
+            background: #ffc107; 
+            color: black;
+            animation: glowYellow 1.5s infinite alternate;
+        }
+        @keyframes glowYellow {
+            from { box-shadow: 0 0 6px #ffeb99; }
+            to { box-shadow: 0 0 12px #ffc107; }
+        }
+
+        .berat { 
+            background: #dc3545; 
+            color: white;
+            animation: glowRed 1.5s infinite alternate;
+        }
+        @keyframes glowRed {
+            from { box-shadow: 0 0 6px #ff9999; }
+            to { box-shadow: 0 0 15px #dc3545; }
         }
 
         .normal { background: #28a745; color: white; }
-        .ringan { background: #ffc107; color: black; }
-        .berat { background: #dc3545; color: white; }
         .kosong { background: transparent; border: none; cursor: default; }
 
         /* POPUP DETAIL */
@@ -79,6 +99,7 @@
             border-radius: 8px;
             box-shadow: 0 3px 8px rgba(0,0,0,0.2);
             display: none;
+            margin-bottom: 40px;
         }
 
         #detailBox h3 {
@@ -88,22 +109,31 @@
             padding-left: 8px;
         }
 
-        /* CHART WRAPPER */
-        .chart-card {
-            width: 420px;
+        /* GRAFIK */
+        .chart-container {
+            margin-top: 40px;
             background: white;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-            border-left: 6px solid #0056b3;
-            margin-top: 35px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+            border-left: 8px solid #0056b3;
         }
 
-        .chart-title {
-            color: #0056b3;
-            font-size: 20px;
+        /* PDF Button */
+        #pdfBtn {
+            background: #ffcc00;
+            padding: 12px 20px;
+            border: none;
+            font-size: 18px;
             font-weight: bold;
-            margin-bottom: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 20px 0;
+            color: #0056b3;
+            transition: 0.3s;
+        }
+        #pdfBtn:hover {
+            background: #ffdb4d;
         }
     </style>
 </head>
@@ -125,27 +155,45 @@
     <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
 </div>
 
-<!-- CHART SECTION -->
-<div class="chart-card">
-    <div class="chart-title">📊 Persentase Kondisi Perangkat</div>
-    <canvas id="statusChart" width="380" height="380"></canvas>
+<!-- GRAFIK -->
+<h2 style="color:#0056b3;margin-top:45px;">📊 Grafik Inventaris Perangkat</h2>
+
+<div class="chart-container">
+    <canvas id="chartPie"></canvas>
 </div>
+
+<div class="chart-container">
+    <canvas id="chartBar"></canvas>
+</div>
+
+<div class="chart-container">
+    <canvas id="chartOS"></canvas>
+</div>
+
+<div class="chart-container">
+    <canvas id="chartLine"></canvas>
+</div>
+
+<button id="pdfBtn">📄 Export PDF</button>
+
+<!-- DETAIL -->
+<div id="detailBox"></div>
 
 <h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab</h2>
 
 <div id="mapGrid"></div>
 
-<div id="detailBox"></div>
 
+<!-- LIBRARIES -->
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 let INV = [];
 
-/* =============================
-   LOAD EXCEL
-============================= */
+/* LOAD EXCEL */
 async function loadExcel() {
     const res = await fetch("assets/inventarislab2.xlsx");
     const buf = await res.arrayBuffer();
@@ -154,14 +202,12 @@ async function loadExcel() {
     INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
 
     updateDashboard();
+    renderCharts();
     renderMap();
-    renderChart();
 }
 loadExcel();
 
-/* =============================
-   UPDATE DASHBOARD
-============================= */
+/* DASHBOARD */
 function updateDashboard() {
 
     const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
@@ -187,39 +233,98 @@ function updateDashboard() {
 }
 
 /* =============================
-   RENDER DONUT CHART
+   GRAFIK
 ============================= */
-function renderChart() {
-    const normal = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
-    const ringan = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
-    const berat  = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
+function renderCharts() {
 
-    new Chart(document.getElementById("statusChart"), {
-        type: 'doughnut',
+    const normal = INV.filter(x => (x.Kondisi||"").toLowerCase()==="normal").length;
+    const ringan = INV.filter(x => (x.Kondisi||"").toLowerCase().includes("ringan")).length;
+    const berat  = INV.filter(x => (x.Kondisi||"").toLowerCase().includes("berat")).length;
+
+    const win = INV.filter(x => (x.OS||"").toLowerCase()==="windows 10 pro 64 bit").length;
+    const chrome = INV.filter(x => (x.OS||"").toLowerCase()==="chromebook").length;
+
+    // PIE KONDISI
+    new Chart(document.getElementById("chartPie"), {
+        type: "pie",
         data: {
             labels: ["Normal", "Rusak Ringan", "Rusak Berat"],
             datasets: [{
                 data: [normal, ringan, berat],
-                backgroundColor: ["#0056b3", "#ffcc00", "#dc3545"],
-                hoverOffset: 12
+                backgroundColor: ["#0056b3", "#ffcc00", "#dc3545"]
             }]
-        },
-        options: {
-            cutout: "65%",
-            plugins: {
-                tooltip: { enabled: true },
-                legend: { position: "bottom" }
-            },
-            animation: {
-                animateRotate: true,
-                animateScale: true
-            }
+        }
+    });
+
+    // BAR KONDISI
+    new Chart(document.getElementById("chartBar"), {
+        type: "bar",
+        data: {
+            labels: ["Normal", "Ringan", "Berat"],
+            datasets: [{
+                label: "Jumlah",
+                data: [normal, ringan, berat],
+                backgroundColor: ["#0056b3", "#ffcc00", "#dc3545"]
+            }]
+        }
+    });
+
+    // PIE OS
+    new Chart(document.getElementById("chartOS"), {
+        type: "pie",
+        data: {
+            labels: ["Windows", "Chromebook"],
+            datasets: [{
+                data: [win, chrome],
+                backgroundColor: ["#0056b3", "#28a745"]
+            }]
+        }
+    });
+
+    // LINE TREND
+    new Chart(document.getElementById("chartLine"), {
+        type: "line",
+        data: {
+            labels: ["Normal", "Ringan", "Berat"],
+            datasets: [{
+                label: "Jumlah Perangkat",
+                data: [normal, ringan, berat],
+                borderColor: "#0056b3",
+                backgroundColor: "#ffcc00"
+            }]
         }
     });
 }
 
+/* PDF EXPORT */
+document.getElementById("pdfBtn").onclick = async () => {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    pdf.text("Laporan Inventaris Lab Komputer", 10, 10);
+
+    let y = 20;
+
+    pdf.text("Total Perangkat: " + document.getElementById("totalPerangkat").innerText, 10, y); y+=8;
+    pdf.text("Normal: " + document.getElementById("normalCount").innerText, 10, y); y+=8;
+    pdf.text("Ringan: " + document.getElementById("ringanCount").innerText, 10, y); y+=8;
+    pdf.text("Berat: " + document.getElementById("beratCount").innerText, 10, y); y+=8;
+
+    const charts = ["chartPie","chartBar","chartOS","chartLine"];
+
+    for (let id of charts) {
+        let canvas = document.getElementById(id);
+        let img = canvas.toDataURL("image/png", 1.0);
+
+        pdf.addPage();
+        pdf.addImage(img, "PNG", 10, 20, 180, 100);
+    }
+
+    pdf.save("Laporan_Inventaris.pdf");
+};
+
 /* =============================
-   RENDER MAP (FIXED)
+   MAP
 ============================= */
 function renderMap() {
     const grid = document.getElementById("mapGrid");
@@ -244,7 +349,6 @@ function renderMap() {
             }
 
             const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
-
             let kondisiClass = "kosong";
 
             if (item) {
@@ -264,9 +368,7 @@ function renderMap() {
     });
 }
 
-/* =============================
-   DETAIL POPUP
-============================= */
+/* DETAIL */
 function showDetail(no) {
     const box = document.getElementById("detailBox");
     const item = INV.find(x => Number(x["NO MEJA"]) === no);
@@ -274,7 +376,7 @@ function showDetail(no) {
     box.style.display = "block";
 
     if (!item) {
-        box.innerHTML = `<h3>Meja ${no}</h3>Data tidak ditemukan`;
+        box.innerHTML = `<h3>Detail Meja ${no}</h3>Data tidak ditemukan`;
         return;
     }
 
@@ -282,8 +384,15 @@ function showDetail(no) {
 
     box.innerHTML = `
         <h3>Detail Meja ${no}</h3>
+
+        <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
         <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
-        <b>OS:</b> ${item.OS || "-"}<br>
+        <b>Processor:</b> ${item.Processor || "-"}<br>
+        <b>RAM:</b> ${item.RAM || "-"}<br>
+        <b>Storage:</b> ${item.Storage || "-"}<br>
+        <b>Layar:</b> ${item.Layar || "-"}<br>
+        <b>OS:</b> ${item.OS || "-"}<br><br>
+
         <b>Kondisi:</b> ${item.Kondisi || "-"} ${ketRusak}<br>
         <b>Mouse:</b> ${item.Mouse || "-"}<br>
         <b>Keyboard:</b> ${item.Keyboard || "-"}<br>
