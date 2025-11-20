@@ -132,6 +132,18 @@ async function loadExcel() {
 }
 loadExcel();
 
+/* Fungsi membaca nomor meja dari semua kemungkinan nama kolom */
+function getNoMeja(row) {
+    return Number(
+        row["NO MEJA"] ||
+        row["NO_MEJA"] ||
+        row["No Meja"] ||
+        row["Nomor Meja"] ||
+        row["NO"] ||
+        0
+    );
+}
+
 /* =============================
    UPDATE DASHBOARD
 ============================= */
@@ -178,16 +190,14 @@ function renderMap() {
 
             const div = document.createElement("div");
 
-            // ❗ Kosong → tidak berwarna
             if (mejaNum === "") {
                 div.className = "meja kosong";
                 grid.appendChild(div);
                 return;
             }
 
-            const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
+            const item = INV.find(x => getNoMeja(x) === Number(mejaNum));
 
-            // Default = kosong
             let kondisiClass = "kosong";
 
             if (item) {
@@ -212,7 +222,7 @@ function renderMap() {
 ============================= */
 function showDetail(no) {
     const box = document.getElementById("detailBox");
-    const item = INV.find(x => Number(x["NO MEJA"]) === no);
+    const item = INV.find(x => getNoMeja(x) === Number(no));
 
     box.style.display = "block";
 
