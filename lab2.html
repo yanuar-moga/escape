@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <title>Dashboard Inventaris Lab 2</title>
 
-<!-- TailwindCSS -->
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- SheetJS -->
+<!-- XLSX -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-<!-- Chart.js -->
+<!-- ChartJS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- html2canvas & jsPDF -->
+<!-- export PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -22,28 +22,28 @@
         width: 60px;
         height: 60px;
         display:flex;
-        align-items:center;
         justify-content:center;
-        border:1px solid #ddd;
-        margin:2px;
-        border-radius:8px;
-        font-weight:bold;
+        align-items:center;
+        border:1px solid #ccc;
+        border-radius:10px;
         font-size:18px;
+        font-weight:bold;
+        margin:3px;
         cursor:pointer;
     }
-    .normal { background:#7CFF7C; }
-    .ringan { background:#FFD27F; }
-    .berat { background:#FF7C7C; }
-    .empty { background:#dcdcdc; }
+
+    .normal { background:#7CFF7C; }      /* hijau */
+    .ringan { background:#FFD27F; }      /* orange */
+    .berat { background:#FF7C7C; }       /* merah */
+    .empty { background:#EAEAEA; }       /* abu */
 
     .modal {
         position: fixed;
-        top:0; left:0;
-        width:100%; height:100%;
-        background:rgba(0,0,0,0.5);
+        inset:0;
+        background: rgba(0,0,0,0.5);
         display:flex;
-        align-items:center;
         justify-content:center;
+        align-items:center;
         z-index:50;
     }
 </style>
@@ -54,11 +54,13 @@
 <h1 class="text-3xl font-bold mb-6">Dashboard Inventaris Laptop Lab 2</h1>
 
 <button onclick="exportPDF()" class="px-4 py-2 bg-blue-600 text-white rounded shadow">
-    Export PDF (Dashboard)
+    Export PDF Dashboard
 </button>
 
+<!-- KARTU STATISTIK -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6" id="statsCards"></div>
 
+<!-- CHART -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
     <div class="bg-white p-4 rounded-xl shadow">
         <canvas id="chartKondisi"></canvas>
@@ -68,21 +70,22 @@
     </div>
 </div>
 
+<!-- PETA -->
 <h2 class="text-3xl font-bold mt-10 mb-4 text-center">Pemetaan Laptop</h2>
-<div class="text-center font-bold mb-4 text-lg">MEJA GURU</div>
+<div class="text-center font-bold mb-4">MEJA GURU</div>
+<div id="mapContainer" class="bg-white p-4 rounded-xl shadow overflow-auto"></div>
 
-<div class="bg-white p-4 rounded-xl shadow overflow-auto" id="mapContainer"></div>
-
+<!-- MODAL DETAIL -->
 <div id="modal" class="hidden"></div>
+
 
 <script>
 let INV = [];
 
 async function loadExcel() {
     const file = "https://raw.githubusercontent.com/yanuar-moga/escape/main/assets/inventarislab2.xlsx";
-
-    const data = await fetch(file).then(res => res.arrayBuffer());
-    const wb = XLSX.read(data, { type:"array" });
+    const buf = await fetch(file).then(r => r.arrayBuffer());
+    const wb = XLSX.read(buf, { type:"array" });
 
     INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
     const MAP_RAW = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header:1 });
@@ -95,16 +98,21 @@ async function loadExcel() {
 }
 
 function renderStats(inv) {
+
+    const laptopCount = inv.filter(x =>
+        (x.OS || "").toLowerCase().includes("windows 10 pro 64 bit")
+    ).length;
+
+    const chromebook = inv.filter(x =>
+        (x.OS || "").toLowerCase().includes("chromebook")
+    ).length;
+
     const normal = inv.filter(x => x.Kondisi?.toLowerCase() === "normal").length;
     const ringan = inv.filter(x => x.Kondisi?.toLowerCase().includes("ringan")).length;
     const berat = inv.filter(x => x.Kondisi?.toLowerCase().includes("berat")).length;
 
-    const chromebook = inv.filter(x => (x.OS || "").toLowerCase().includes("chrome")).length;
-
-    const laptopCount = inv.length - chromebook;
-
     const mouseNeed = inv.filter(x => (x.Mouse || "").toLowerCase() !== "ada").length;
-    const kbNeed = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
+    const kbNeed   = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
 
     const stats = [
         { title:"Total Laptop", value:laptopCount },
@@ -113,16 +121,17 @@ function renderStats(inv) {
         { title:"Rusak Ringan", value:ringan },
         { title:"Rusak Berat", value:berat },
         { title:"Kebutuhan Mouse", value:mouseNeed },
-        { title:"Kebutuhan Keyboard", value:kbNeed },
+        { title:"Kebutuhan Keyboard", value:kbNeed }
     ];
 
     let html = "";
     stats.forEach(s => {
         html += `
-        <div class="bg-white p-6 rounded-xl shadow text-center">
-            <div class="text-4xl font-bold">${s.value}</div>
-            <div class="text-gray-600">${s.title}</div>
-        </div>`;
+            <div class="bg-white p-6 rounded-xl shadow text-center">
+                <div class="text-4xl font-bold">${s.value}</div>
+                <div class="text-gray-600">${s.title}</div>
+            </div>
+        `;
     });
 
     document.getElementById("statsCards").innerHTML = html;
@@ -142,7 +151,7 @@ function renderCharts(inv) {
     });
 
     const mouseNeed = inv.filter(x => (x.Mouse || "").toLowerCase() !== "ada").length;
-    const kbNeed = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
+    const kbNeed   = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
 
     new Chart(chartAksesoris, {
         type:"bar",
@@ -154,15 +163,17 @@ function renderCharts(inv) {
 }
 
 function renderMap(MAP, INV) {
-    let html = '<div class="flex justify-center gap-16">';
+    let html = '<div class="flex flex-col gap-4 items-center">';
 
     MAP.forEach(row => {
         let left = row.slice(0,6);
         let right = row.slice(7);
 
         html += `
-        <div class="grid grid-cols-6">${makeCells(left, INV)}</div>
-        <div class="grid grid-cols-4">${makeCells(right, INV)}</div>
+            <div class="flex gap-12">
+                <div class="grid grid-cols-6">${makeCells(left)}</div>
+                <div class="grid grid-cols-4">${makeCells(right)}</div>
+            </div>
         `;
     });
 
@@ -170,9 +181,10 @@ function renderMap(MAP, INV) {
     document.getElementById("mapContainer").innerHTML = html;
 }
 
-function makeCells(row, INV) {
+function makeCells(mejaArr) {
     let html = "";
-    row.forEach(num => {
+
+    mejaArr.forEach(num => {
         if (!num) {
             html += `<div class="map-cell empty"></div>`;
             return;
@@ -182,7 +194,7 @@ function makeCells(row, INV) {
         let cls = "empty";
 
         if (item) {
-            const k = item.Kondisi.toLowerCase();
+            let k = item.Kondisi?.toLowerCase();
             if (k === "normal") cls = "normal";
             else if (k.includes("ringan")) cls = "ringan";
             else if (k.includes("berat")) cls = "berat";
@@ -194,31 +206,35 @@ function makeCells(row, INV) {
     return html;
 }
 
-function showDetail(noMeja) {
-    const item = INV.find(x => Number(x["NO MEJA"]) === Number(noMeja));
+function showDetail(no) {
+    const item = INV.find(x => Number(x["NO MEJA"]) === no);
 
-    let modalHTML = `
-    <div class="modal" onclick="closeModal()">
-        <div class="bg-white p-6 rounded-xl shadow max-w-lg w-full" onclick="event.stopPropagation()">
+    const html = `
+        <div class="modal" onclick="closeModal()">
+            <div class="bg-white rounded-xl shadow p-6 max-w-lg w-full"
+                 onclick="event.stopPropagation()">
 
-            <h2 class="text-2xl font-bold mb-4">Detail Meja ${noMeja}</h2>
+                <h2 class="text-2xl font-bold mb-4">Detail Meja ${no}</h2>
 
-            ${item ? `
-                <p><b>No Inventaris:</b> ${item["NO INVENTARIS"] || "-"}</p>
-                <p><b>Nama Barang:</b> ${item["NAMA BARANG"] || "-"}</p>
-                <p><b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}</p>
-                <p><b>OS:</b> ${item["OS"] || "-"}</p>
-                <p><b>Kondisi:</b> ${item["Kondisi"]}</p>
-                <p><b>Mouse:</b> ${item.Mouse}</p>
-                <p><b>Keyboard:</b> ${item.Keyboard}</p>
-                <p><b>Keterangan:</b> ${item.Keterangan || "-"}</p>
-            ` : `<p class='text-red-600 font-bold'>Tidak ada laptop di meja ini.</p>`}
-
+                ${item ? `
+                    <p><b>No Inventaris:</b> ${item["NO INVENTARIS"]}</p>
+                    <p><b>Nama Barang:</b> ${item["NAMA BARANG"]}</p>
+                    <p><b>Merek / Tipe:</b> ${item["Merek / Tipe"]}</p>
+                    <p><b>OS:</b> ${item["OS"]}</p>
+                    <p><b>Kondisi:</b> ${item["Kondisi"]}</p>
+                    <p><b>Mouse:</b> ${item["Mouse"]}</p>
+                    <p><b>Keyboard:</b> ${item["Keyboard"]}</p>
+                    <p><b>Keterangan:</b> ${item["Keterangan"]}</p>
+                ` : `
+                    <p class='text-red-600 font-bold'>Tidak ada laptop di meja ini.</p>
+                `}
+            </div>
         </div>
-    </div>`;
+    `;
 
-    document.getElementById("modal").innerHTML = modalHTML;
-    document.getElementById("modal").classList.remove("hidden");
+    const modal = document.getElementById("modal");
+    modal.innerHTML = html;
+    modal.classList.remove("hidden");
 }
 
 function closeModal() {
@@ -229,8 +245,7 @@ async function exportPDF() {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF("p", "mm", "a4");
 
-    const element = document.body;
-    const canvas = await html2canvas(element, { scale:2 });
+    const canvas = await html2canvas(document.body, { scale:2 });
     const img = canvas.toDataURL("image/png");
 
     const pageWidth = pdf.internal.pageSize.getWidth();
