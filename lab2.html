@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Dashboard Inventaris Lab 2</title>
 
-<!-- Tailwind -->
+<!-- TailwindCSS -->
 <script src="https://cdn.tailwindcss.com"></script>
 
 <!-- SheetJS -->
@@ -29,6 +29,7 @@
     .rusak {
         background-color: #ffb3b3 !important;
         color: #700;
+        font-weight: 900;
     }
 </style>
 </head>
@@ -49,7 +50,7 @@
     </div>
 </div>
 
-<!-- FITUR SEARCH & FILTER -->
+<!-- SEARCH & FILTER -->
 <div class="bg-white p-4 rounded-xl shadow mt-8">
     <h2 class="text-2xl mb-4">Pencarian & Filter</h2>
     <div class="flex flex-col md:flex-row gap-4">
@@ -76,19 +77,27 @@
 let INV_DATA = [];
 
 async function loadExcel() {
-    const file = "assets/inventarislab2.xlsx";
+    const file = "https://raw.githubusercontent.com/yanuar-moga/escape/main/assets/inventarislab2.xlsx";
+
     const data = await fetch(file).then(res => res.arrayBuffer());
     const workbook = XLSX.read(data, { type: "array" });
 
     const inv = XLSX.utils.sheet_to_json(workbook.Sheets["INV"]);
-    const map = XLSX.utils.sheet_to_json(workbook.Sheets["MAP"], { header: 1 });
+    const mapRaw = XLSX.utils.sheet_to_json(workbook.Sheets["MAP"], { header: 1 });
 
     INV_DATA = inv;
+
+    const map = cleanMapGrid(mapRaw);
 
     renderInvTable(inv);
     renderMap(map, inv);
     generateStats(inv);
     generateCharts(inv);
+}
+
+function cleanMapGrid(rawMap) {
+    // Hapus baris kosong
+    return rawMap.filter(row => row.some(cell => cell !== null && cell !== "" && cell !== undefined));
 }
 
 function renderInvTable(data) {
@@ -98,13 +107,14 @@ function renderInvTable(data) {
 }
 
 function renderMap(map, inv) {
-    let html = `<div class="grid grid-cols-${map[1].length} gap-2">`;
+    let html = `<div class="grid grid-cols-${map[0].length} gap-2">`;
 
     map.forEach(row => {
         row.forEach(cell => {
             if (cell && !isNaN(cell)) {
-                const item = inv.find(x => String(x["No Inventaris"]) == String(cell));
-                const rusak = item && String(item["Kondisi Fisik"]).toLowerCase().includes("rusak");
+                const item = inv.find(x => String(x["No Inventaris"]) === String(cell));
+
+                const rusak = item ? (item["Kondisi Fisik"] || "").toLowerCase().includes("rusak") : false;
 
                 html += `<div class="map-cell ${rusak ? 'rusak' : ''}">${cell}</div>`;
             } else {
@@ -114,6 +124,7 @@ function renderMap(map, inv) {
     });
 
     html += "</div>";
+
     document.getElementById("mapGrid").innerHTML = html;
 }
 
@@ -171,9 +182,7 @@ function generateCharts(inv) {
         type: "bar",
         data: {
             labels: ["Mouse Ada", "Mouse Tidak", "Keyboard Ada", "Keyboard Tidak"],
-            datasets: [{
-                data: [mouseAda, mouseTidak, kbAda, kbTidak]
-            }]
+            datasets: [{ data: [mouseAda, mouseTidak, kbAda, kbTidak] }]
         }
     });
 }
