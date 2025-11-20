@@ -63,14 +63,15 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            cursor: pointer;
         }
 
-        .normal { background: #28a745; color: white; cursor: pointer; }
-        .ringan { background: #ffc107; color: black; cursor: pointer; }
-        .berat { background: #dc3545; color: white; cursor: pointer; }
+        .normal { background: #28a745; color: white; }
+        .ringan { background: #ffc107; color: black; }
+        .berat { background: #dc3545; color: white; }
         .kosong { background: transparent; border: none; cursor: default; }
 
-        /* DETAIL POPUP */
+        /* POPUP DETAIL */
         #detailBox {
             background: white;
             width: 360px;
@@ -85,6 +86,24 @@
             color: #0056b3;
             border-left: 6px solid #ffcc00;
             padding-left: 8px;
+        }
+
+        /* CHART WRAPPER */
+        .chart-card {
+            width: 420px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            border-left: 6px solid #0056b3;
+            margin-top: 35px;
+        }
+
+        .chart-title {
+            color: #0056b3;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -106,6 +125,12 @@
     <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
 </div>
 
+<!-- CHART SECTION -->
+<div class="chart-card">
+    <div class="chart-title">📊 Persentase Kondisi Perangkat</div>
+    <canvas id="statusChart" width="380" height="380"></canvas>
+</div>
+
 <h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab</h2>
 
 <div id="mapGrid"></div>
@@ -113,13 +138,10 @@
 <div id="detailBox"></div>
 
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 let INV = [];
-
-/* Fungsi aman untuk membaca nomor meja */
-function getNoMeja(row) {
-    return parseInt(String(row["NO MEJA"] || "").trim());
-}
 
 /* =============================
    LOAD EXCEL
@@ -133,6 +155,7 @@ async function loadExcel() {
 
     updateDashboard();
     renderMap();
+    renderChart();
 }
 loadExcel();
 
@@ -144,9 +167,9 @@ function updateDashboard() {
     const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
     const chrome = INV.filter(x => (x.OS || "").toLowerCase() === "chromebook");
 
-    const normal = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal");
-    const ringan = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan"));
-    const berat  = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat"));
+    const normal   = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal");
+    const ringan   = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan"));
+    const berat    = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat"));
 
     const needMouse    = INV.filter(x => (x.Mouse || "").toLowerCase() === "tidak");
     const needKeyboard = INV.filter(x => (x.Keyboard || "").toLowerCase() === "tidak");
@@ -161,6 +184,38 @@ function updateDashboard() {
 
     document.getElementById("mouseNeed").innerText = needMouse.length;
     document.getElementById("keyboardNeed").innerText = needKeyboard.length;
+}
+
+/* =============================
+   RENDER DONUT CHART
+============================= */
+function renderChart() {
+    const normal = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
+    const ringan = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
+    const berat  = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
+
+    new Chart(document.getElementById("statusChart"), {
+        type: 'doughnut',
+        data: {
+            labels: ["Normal", "Rusak Ringan", "Rusak Berat"],
+            datasets: [{
+                data: [normal, ringan, berat],
+                backgroundColor: ["#0056b3", "#ffcc00", "#dc3545"],
+                hoverOffset: 12
+            }]
+        },
+        options: {
+            cutout: "65%",
+            plugins: {
+                tooltip: { enabled: true },
+                legend: { position: "bottom" }
+            },
+            animation: {
+                animateRotate: true,
+                animateScale: true
+            }
+        }
+    });
 }
 
 /* =============================
@@ -182,15 +237,13 @@ function renderMap() {
 
             const div = document.createElement("div");
 
-            // Ruang kosong
             if (mejaNum === "") {
                 div.className = "meja kosong";
                 grid.appendChild(div);
                 return;
             }
 
-            // Cari data berdasarkan nomor meja bersih
-            const item = INV.find(x => getNoMeja(x) === Number(mejaNum));
+            const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
 
             let kondisiClass = "kosong";
 
@@ -204,11 +257,7 @@ function renderMap() {
             div.className = `meja ${kondisiClass}`;
             div.textContent = mejaNum;
 
-            // Klik hanya jika ada data
-            if (item) {
-                div.style.cursor = "pointer";
-                div.onclick = () => showDetail(mejaNum);
-            }
+            if (item) div.onclick = () => showDetail(mejaNum);
 
             grid.appendChild(div);
         });
@@ -220,7 +269,7 @@ function renderMap() {
 ============================= */
 function showDetail(no) {
     const box = document.getElementById("detailBox");
-    const item = INV.find(x => getNoMeja(x) === Number(no));
+    const item = INV.find(x => Number(x["NO MEJA"]) === no);
 
     box.style.display = "block";
 
@@ -229,20 +278,13 @@ function showDetail(no) {
         return;
     }
 
-    let kondisi = item.Kondisi || "-";
-    let ket = item.Keterangan || "";
-
-    // Tambahkan keterangan rusak dalam kurung
-    if ((kondisi.toLowerCase().includes("ringan") ||
-         kondisi.toLowerCase().includes("berat")) && ket.trim() !== "") {
-        kondisi = `${kondisi} (${ket})`;
-    }
+    let ketRusak = item.Keterangan ? ` (${item.Keterangan})` : "";
 
     box.innerHTML = `
         <h3>Detail Meja ${no}</h3>
         <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
         <b>OS:</b> ${item.OS || "-"}<br>
-        <b>Kondisi:</b> ${kondisi}<br>
+        <b>Kondisi:</b> ${item.Kondisi || "-"} ${ketRusak}<br>
         <b>Mouse:</b> ${item.Mouse || "-"}<br>
         <b>Keyboard:</b> ${item.Keyboard || "-"}<br>
     `;
