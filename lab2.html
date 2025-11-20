@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Inventaris Lab 2</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    .map-cell {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #ddd;
+        margin: 2px;
+        border-radius: 6px;
+        background: #fefefe;
+        font-weight: bold;
+    }
+    .rusak {
+        background-color: #ffb3b3 !important;
+        color: #700;
+    }
+</style>
+</head>
+<body class="bg-gray-100 p-6">
+
+<h1 class="text-3xl font-bold mb-6">Dashboard Inventaris Laptop Lab 2</h1>
+
+<!-- STATISTIK -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="statsCards"></div>
+
+<!-- GRAFIK -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+    <div class="bg-white p-4 rounded-xl shadow">
+        <canvas id="chartKondisi"></canvas>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+        <canvas id="chartAksesoris"></canvas>
+    </div>
+</div>
+
+<!-- FITUR SEARCH & FILTER -->
+<div class="bg-white p-4 rounded-xl shadow mt-8">
+    <h2 class="text-2xl mb-4">Pencarian & Filter</h2>
+    <div class="flex flex-col md:flex-row gap-4">
+        <input id="searchInput" placeholder="Cari nomor inventaris / meja..."
+            class="border px-3 py-2 rounded w-full" onkeyup="applyFilters()">
+
+        <select id="filterKondisi" onchange="applyFilters()" class="border px-3 py-2 rounded w-64">
+            <option value="ALL">Semua Kondisi</option>
+            <option value="NORMAL">Normal</option>
+            <option value="RUSAK">Rusak</option>
+        </select>
+    </div>
+</div>
+
+<!-- TABEL INVENTARIS -->
+<h2 class="text-3xl font-bold mt-10 mb-4">Data Inventaris (Sheet INV)</h2>
+<div class="bg-white p-4 rounded-xl shadow" id="invTable"></div>
+
+<!-- MAP -->
+<h2 class="text-3xl font-bold mt-10 mb-4">Pemetaan Laptop (Sheet MAP)</h2>
+<div class="bg-white p-4 rounded-xl shadow p-4 overflow-auto" id="mapGrid"></div>
+
+<script>
+let INV_DATA = [];
+
+async function loadExcel() {
+    const file = "assets/inventarislab2.xlsx";
+    const data = await fetch(file).then(res => res.arrayBuffer());
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const inv = XLSX.utils.sheet_to_json(workbook.Sheets["INV"]);
+    const map = XLSX.utils.sheet_to_json(workbook.Sheets["MAP"], { header: 1 });
+
+    INV_DATA = inv;
+
+    renderInvTable(inv);
+    renderMap(map, inv);
+    generateStats(inv);
+    generateCharts(inv);
+}
+
+function renderInvTable(data) {
+    const sheet = XLSX.utils.json_to_sheet(data);
+    const html = XLSX.utils.sheet_to_html(sheet);
+    document.getElementById("invTable").innerHTML = html;
+}
+
+function renderMap(map, inv) {
+    let html = `<div class="grid grid-cols-${map[1].length} gap-2">`;
+
+    map.forEach(row => {
+        row.forEach(cell => {
+            if (cell && !isNaN(cell)) {
+                const item = inv.find(x => String(x["No Inventaris"]) == String(cell));
+                const rusak = item && String(item["Kondisi Fisik"]).toLowerCase().includes("rusak");
+
+                html += `<div class="map-cell ${rusak ? 'rusak' : ''}">${cell}</div>`;
+            } else {
+                html += `<div class="map-cell bg-gray-200"></div>`;
+            }
+        });
+    });
+
+    html += "</div>";
+    document.getElementById("mapGrid").innerHTML = html;
+}
+
+function generateStats(inv) {
+    const rusak = inv.filter(i => (i["Kondisi Fisik"] || "").toLowerCase().includes("rusak")).length;
+    const normal = inv.length - rusak;
+
+    const mouseAda = inv.filter(i => (i.Mouse || "").toUpperCase() === "ADA").length;
+    const mouseTidak = inv.length - mouseAda;
+
+    const kbAda = inv.filter(i => (i.Keyboard || "").toUpperCase() === "ADA").length;
+    const kbTidak = inv.length - kbAda;
+
+    const stats = [
+        { title: "Total Laptop", value: inv.length },
+        { title: "Laptop Normal", value: normal },
+        { title: "Laptop Rusak", value: rusak },
+        { title: "Mouse ADA", value: mouseAda },
+        { title: "Mouse TIDAK", value: mouseTidak },
+        { title: "Keyboard ADA", value: kbAda },
+        { title: "Keyboard TIDAK", value: kbTidak },
+    ];
+
+    let html = "";
+    stats.forEach(s => {
+        html += `
+        <div class="bg-white p-6 rounded-xl shadow text-center">
+            <div class="text-4xl font-bold">${s.value}</div>
+            <div class="text-gray-600">${s.title}</div>
+        </div>`;
+    });
+
+    document.getElementById("statsCards").innerHTML = html;
+}
+
+function generateCharts(inv) {
+    const rusak = inv.filter(i => (i["Kondisi Fisik"] || "").toLowerCase().includes("rusak")).length;
+    const normal = inv.length - rusak;
+
+    new Chart(document.getElementById("chartKondisi"), {
+        type: "pie",
+        data: {
+            labels: ["Normal", "Rusak"],
+            datasets: [{ data: [normal, rusak] }]
+        }
+    });
+
+    const mouseAda = inv.filter(i => (i.Mouse || "").toUpperCase() === "ADA").length;
+    const mouseTidak = inv.length - mouseAda;
+
+    const kbAda = inv.filter(i => (i.Keyboard || "").toUpperCase() === "ADA").length;
+    const kbTidak = inv.length - kbAda;
+
+    new Chart(document.getElementById("chartAksesoris"), {
+        type: "bar",
+        data: {
+            labels: ["Mouse Ada", "Mouse Tidak", "Keyboard Ada", "Keyboard Tidak"],
+            datasets: [{
+                data: [mouseAda, mouseTidak, kbAda, kbTidak]
+            }]
+        }
+    });
+}
+
+function applyFilters() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const filter = document.getElementById("filterKondisi").value;
+
+    const filtered = INV_DATA.filter(row => {
+        let kondisi = (row["Kondisi Fisik"] || "").toLowerCase();
+
+        if (filter === "RUSAK" && !kondisi.includes("rusak")) return false;
+        if (filter === "NORMAL" && kondisi.includes("rusak")) return false;
+
+        const rowText = JSON.stringify(row).toLowerCase();
+        if (!rowText.includes(search)) return false;
+
+        return true;
+    });
+
+    renderInvTable(filtered);
+}
+
+loadExcel();
+</script>
+
+</body>
+</html>
