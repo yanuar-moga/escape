@@ -2,79 +2,113 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard & Pemetaan Lab Komputer</title>
+    <title>Dashboard Inventaris Lab Komputer</title>
+
     <style>
         body {
-            font-family: Calibri, Arial;
+            font-family: 'Calibri', sans-serif;
+            background: #f4f7fb;
             padding: 20px;
-            background: #f7f7f7;
+            margin: 0;
         }
 
-        h2 {
-            background: #007bff;
+        /* HEADER */
+        .header {
+            background: #0056b3;
+            padding: 15px 25px;
             color: white;
-            padding: 10px;
-            width: fit-content;
-        }
-
-        #summary {
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            width: 420px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        #mapGrid {
-            display: grid;
-            grid-template-columns: repeat(11, 50px);
-            gap: 4px;
-            margin-top: 20px;
-        }
-
-        .meja {
-            width: 50px;
-            height: 40px;
-            border: 1px solid #555;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            font-size: 28px;
             font-weight: bold;
-            cursor: pointer;
+            border-left: 10px solid #ffcc00;
+            width: fit-content;
             border-radius: 5px;
         }
 
-        .kosong { background: transparent; border: none; }
-        .normal { background: #5cb85c; color: white; }
-        .ringan { background: #f0ad4e; color: black; }
-        .berat  { background: #d9534f; color: white; }
-
-        #detailBox {
+        /* DASHBOARD CARDS */
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(3, 260px);
+            gap: 15px;
             margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #aaa;
-            width: 350px;
-            display: none;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        .title {
-            font-size: 20px;
+        .card {
+            background: white;
+            border-left: 6px solid #ffcc00;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            font-size: 18px;
+        }
+
+        .card-title {
+            color: #0056b3;
             font-weight: bold;
-            margin-bottom: 8px;
+        }
+
+        /* MAP GRID */
+        #mapGrid {
+            display: grid;
+            grid-template-columns: repeat(11, 55px);
+            gap: 6px;
+            margin-top: 30px;
+            margin-bottom: 40px;
+        }
+
+        .meja {
+            width: 55px;
+            height: 45px;
+            border-radius: 6px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .normal { background: #28a745; color: white; }
+        .ringan { background: #ffc107; color: black; }
+        .berat { background: #dc3545; color: white; }
+        .kosong { background: transparent; border: none; }
+
+        /* POPUP DETAIL */
+        #detailBox {
+            background: white;
+            width: 360px;
+            padding: 18px;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        #detailBox h3 {
+            margin-top: 0;
+            color: #0056b3;
+            border-left: 6px solid #ffcc00;
+            padding-left: 8px;
         }
     </style>
 </head>
 <body>
 
-<h2>📌 Dashboard Inventaris Lab Komputer</h2>
+<div class="header">📘 Dashboard Inventaris Lab Komputer</div>
 
-<div id="summary">Memuat data...</div>
+<!-- DASHBOARD -->
+<div id="dashboard" class="card-container">
+    <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
+    <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
+    <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
 
-<h3>📌 Pemetaan Meja Lab</h3>
+    <div class="card"><div class="card-title">Perangkat Normal</div><span id="normalCount">-</span></div>
+    <div class="card"><div class="card-title">Rusak Ringan</div><span id="ringanCount">-</span></div>
+    <div class="card"><div class="card-title">Rusak Berat</div><span id="beratCount">-</span></div>
+
+    <div class="card"><div class="card-title">Kebutuhan Mouse</div><span id="mouseNeed">-</span></div>
+    <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
+</div>
+
+<h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab</h2>
+
 <div id="mapGrid"></div>
 
 <div id="detailBox"></div>
@@ -82,133 +116,106 @@
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script>
 let INV = [];
-let MAPraw = [];
 
-/* ==========================================================
-   LOAD EXCEL
-   ========================================================== */
 async function loadExcel() {
-    const file = "assets/inventarislab2.xlsx";
-    const resp = await fetch(file);
-    const buf = await resp.arrayBuffer();
+    const res = await fetch("assets/inventarislab2.xlsx");
+    const buf = await res.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
 
     INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
-    MAPraw = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header: 1 });
 
-    processSummary();
-    renderMAP();
+    updateDashboard();
+    renderMap();
 }
 loadExcel();
 
-/* ==========================================================
-   HITUNG STATISTIK
-   ========================================================== */
-function processSummary() {
+/* =============================
+   UPDATE DASHBOARD
+============================= */
+function updateDashboard() {
 
-    const totalDevices = INV.length;
+    const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
+    const chrome = INV.filter(x => (x.OS || "").toLowerCase() === "chromebook");
 
-    const totalLaptop = INV.filter(
-        x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit"
-    ).length;
+    const normal   = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal");
+    const ringan   = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan"));
+    const berat    = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat"));
 
-    const totalChromebook = INV.filter(
-        x => (x.OS || "").toLowerCase() === "chromebook"
-    ).length;
+    const needMouse    = INV.filter(x => (x.Mouse || "").toLowerCase() === "tidak");
+    const needKeyboard = INV.filter(x => (x.Keyboard || "").toLowerCase() === "tidak");
 
-    const normal = INV.filter(
-        x => (x.Kondisi || "").toLowerCase() === "normal"
-    ).length;
+    document.getElementById("totalPerangkat").innerText = win.length + chrome.length;
+    document.getElementById("totalWindows").innerText = win.length;
+    document.getElementById("totalChromebook").innerText = chrome.length;
 
-    const ringan = INV.filter(
-        x => (x.Kondisi || "").toLowerCase().includes("ringan")
-    ).length;
+    document.getElementById("normalCount").innerText = normal.length;
+    document.getElementById("ringanCount").innerText = ringan.length;
+    document.getElementById("beratCount").innerText = berat.length;
 
-    const berat = INV.filter(
-        x => (x.Kondisi || "").toLowerCase().includes("berat")
-    ).length;
-
-    const needMouse = INV.filter(
-        x => (x.Mouse || "").toLowerCase() === "tidak"
-    ).length;
-
-    const needKeyboard = INV.filter(
-        x => (x.Keyboard || "").toLowerCase() === "tidak"
-    ).length;
-
-    document.getElementById("summary").innerHTML = `
-        <b>Total Perangkat:</b> ${totalDevices}<br>
-        <b>Total Laptop:</b> ${totalLaptop}<br>
-        <b>Total Chromebook:</b> ${totalChromebook}<br><br>
-
-        <b>Normal:</b> ${normal} |
-        <b>Rusak Ringan:</b> ${ringan} |
-        <b>Rusak Berat:</b> ${berat}<br><br>
-
-        <b>Kebutuhan Mouse:</b> ${needMouse}<br>
-        <b>Kebutuhan Keyboard:</b> ${needKeyboard}<br>
-    `;
+    document.getElementById("mouseNeed").innerText = needMouse.length;
+    document.getElementById("keyboardNeed").innerText = needKeyboard.length;
 }
 
-/* ==========================================================
-   RENDER MAP SESUAI FORMAT B–G  /  I–K
-   ========================================================== */
-function renderMAP() {
+/* =============================
+   RENDER MAP FIXED (A3–K9)
+============================= */
+function renderMap() {
     const grid = document.getElementById("mapGrid");
     grid.innerHTML = "";
 
-    MAPraw.forEach(row => {
-        const left = row.slice(1, 7);   // Kolom B–G
-        const right = row.slice(8, 11); // Kolom I–K
+    const rows = [
+        [22,21,20,19,18,17,"",4,3,2,1],
+        [28,27,26,25,24,23,"",8,7,6,5],
+        [34,33,32,31,30,29,"",12,11,10,9],
+        [40,39,38,37,36,35,"",16,15,14,13]
+    ];
 
-        const combined = [...left, "", ...right];
+    rows.forEach(r => {
+        r.forEach(mejaNum => {
 
-        combined.forEach(meja => {
             const div = document.createElement("div");
 
-            if (!meja || meja === "") {
+            if (mejaNum === "") {
                 div.className = "meja kosong";
                 grid.appendChild(div);
                 return;
             }
 
-            const no = Number(meja);
-            const item = INV.find(x => Number(x["NO MEJA"]) === no);
+            const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
+            let kondisiClass = "normal";
 
-            let kondisi = "kosong";
             if (item) {
-                const k = (item.Kondisi || "").toLowerCase();
-                if (k === "normal") kondisi = "normal";
-                else if (k.includes("ringan")) kondisi = "ringan";
-                else if (k.includes("berat")) kondisi = "berat";
+                let k = (item.Kondisi || "").toLowerCase();
+                if (k === "normal") kondisiClass = "normal";
+                else if (k.includes("ringan")) kondisiClass = "ringan";
+                else if (k.includes("berat")) kondisiClass = "berat";
             }
 
-            div.className = "meja " + kondisi;
-            div.textContent = no;
-
-            div.onclick = () => showDetail(no);
+            div.className = `meja ${kondisiClass}`;
+            div.textContent = mejaNum;
+            div.onclick = () => showDetail(mejaNum);
 
             grid.appendChild(div);
         });
     });
 }
 
-/* ==========================================================
-   DETAIL MEJA
-   ========================================================== */
+/* =============================
+   DETAIL POPUP
+============================= */
 function showDetail(no) {
     const box = document.getElementById("detailBox");
-    const item = INV.find(x => Number(x["NO MEJA"]) === Number(no));
+    const item = INV.find(x => Number(x["NO MEJA"]) === no);
 
     if (!item) {
         box.style.display = "block";
-        box.innerHTML = `<b>Data tidak ditemukan untuk meja ${no}</b>`;
+        box.innerHTML = `<h3>Meja ${no}</h3>Data tidak ditemukan`;
         return;
     }
 
     box.style.display = "block";
     box.innerHTML = `
-        <div class="title">Meja Nomor ${no}</div>
+        <h3>Detail Meja ${no}</h3>
         <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
         <b>OS:</b> ${item.OS || "-"}<br>
         <b>Kondisi:</b> ${item.Kondisi || "-"}<br>
