@@ -1,263 +1,336 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
-<meta charset="UTF-8">
-<title>Dashboard Inventaris Lab 2</title>
+    <meta charset="UTF-8">
+    <title>Inventaris Lab 2 - Mapping Laptop</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<!-- Tailwind -->
-<script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f3f4f6;
+        }
 
-<!-- XLSX -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+        header {
+            background: #1e3a8a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
 
-<!-- ChartJS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        .container {
+            width: 95%;
+            margin: auto;
+            margin-top: 20px;
+        }
 
-<!-- export PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        /* Dashboard Cards */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
 
-<style>
-    .map-cell {
-        width: 60px;
-        height: 60px;
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        border:1px solid #ccc;
-        border-radius:10px;
-        font-size:18px;
-        font-weight:bold;
-        margin:3px;
-        cursor:pointer;
-    }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        }
 
-    .normal { background:#7CFF7C; }      /* hijau */
-    .ringan { background:#FFD27F; }      /* orange */
-    .berat { background:#FF7C7C; }       /* merah */
-    .empty { background:#EAEAEA; }       /* abu */
+        .card h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #374151;
+        }
 
-    .modal {
-        position: fixed;
-        inset:0;
-        background: rgba(0,0,0,0.5);
-        display:flex;
-        justify-content:center;
-        align-items:center;
-        z-index:50;
-    }
-</style>
+        .value {
+            font-size: 32px;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #1e3a8a;
+        }
+
+        /* MAP Area */
+        .map-container {
+            margin-top: 35px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        }
+
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(11, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .meja {
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+        }
+
+        /* Warna kondisi */
+        .normal {
+            background: #4ade80;
+        }
+
+        .ringan {
+            background: #fb923c;
+        }
+
+        .berat {
+            background: #ef4444;
+        }
+
+        .kosong {
+            background: #e5e7eb;
+        }
+
+        /* Modal */
+        #modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #modalBox {
+            background: white;
+            width: 450px;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .closeBtn {
+            float: right;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        table.detail {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        table.detail td {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            background: #1e3a8a;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
 
 </head>
-<body class="bg-gray-100 p-6">
 
-<h1 class="text-3xl font-bold mb-6">Dashboard Inventaris Laptop Lab 2</h1>
+<body>
+    <header>Inventaris Lab 2 – Mapping Laptop</header>
 
-<button onclick="exportPDF()" class="px-4 py-2 bg-blue-600 text-white rounded shadow">
-    Export PDF Dashboard
-</button>
+    <div class="container">
 
-<!-- KARTU STATISTIK -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6" id="statsCards"></div>
-
-<!-- CHART -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-    <div class="bg-white p-4 rounded-xl shadow">
-        <canvas id="chartKondisi"></canvas>
-    </div>
-    <div class="bg-white p-4 rounded-xl shadow">
-        <canvas id="chartAksesoris"></canvas>
-    </div>
-</div>
-
-<!-- PETA -->
-<h2 class="text-3xl font-bold mt-10 mb-4 text-center">Pemetaan Laptop</h2>
-<div class="text-center font-bold mb-4">MEJA GURU</div>
-<div id="mapContainer" class="bg-white p-4 rounded-xl shadow overflow-auto"></div>
-
-<!-- MODAL DETAIL -->
-<div id="modal" class="hidden"></div>
-
-
-<script>
-let INV = [];
-
-async function loadExcel() {
-    const file = "https://raw.githubusercontent.com/yanuar-moga/escape/main/assets/inventarislab2.xlsx";
-    const buf = await fetch(file).then(r => r.arrayBuffer());
-    const wb = XLSX.read(buf, { type:"array" });
-
-    INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
-    const MAP_RAW = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header:1 });
-
-    const MAP = MAP_RAW.filter(r => r.some(c => c !== null && c !== ""));
-
-    renderStats(INV);
-    renderCharts(INV);
-    renderMap(MAP, INV);
-}
-
-function renderStats(inv) {
-
-    const laptopCount = inv.filter(x =>
-        (x.OS || "").toLowerCase().includes("windows 10 pro 64 bit")
-    ).length;
-
-    const chromebook = inv.filter(x =>
-        (x.OS || "").toLowerCase().includes("chromebook")
-    ).length;
-
-    const normal = inv.filter(x => x.Kondisi?.toLowerCase() === "normal").length;
-    const ringan = inv.filter(x => x.Kondisi?.toLowerCase().includes("ringan")).length;
-    const berat = inv.filter(x => x.Kondisi?.toLowerCase().includes("berat")).length;
-
-    const mouseNeed = inv.filter(x => (x.Mouse || "").toLowerCase() !== "ada").length;
-    const kbNeed   = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
-
-    const stats = [
-        { title:"Total Laptop", value:laptopCount },
-        { title:"Total Chromebook", value:chromebook },
-        { title:"Laptop Normal", value:normal },
-        { title:"Rusak Ringan", value:ringan },
-        { title:"Rusak Berat", value:berat },
-        { title:"Kebutuhan Mouse", value:mouseNeed },
-        { title:"Kebutuhan Keyboard", value:kbNeed }
-    ];
-
-    let html = "";
-    stats.forEach(s => {
-        html += `
-            <div class="bg-white p-6 rounded-xl shadow text-center">
-                <div class="text-4xl font-bold">${s.value}</div>
-                <div class="text-gray-600">${s.title}</div>
+        <!-- Dashboard -->
+        <div class="dashboard">
+            <div class="card">
+                <h3>Total Perangkat</h3>
+                <div class="value" id="totalDevice">0</div>
             </div>
-        `;
-    });
 
-    document.getElementById("statsCards").innerHTML = html;
-}
-
-function renderCharts(inv) {
-    const normal = inv.filter(x => x.Kondisi?.toLowerCase() === "normal").length;
-    const ringan = inv.filter(x => x.Kondisi?.toLowerCase().includes("ringan")).length;
-    const berat = inv.filter(x => x.Kondisi?.toLowerCase().includes("berat")).length;
-
-    new Chart(chartKondisi, {
-        type:"pie",
-        data:{
-            labels:["Normal","Ringan","Berat"],
-            datasets:[{ data:[normal, ringan, berat] }]
-        }
-    });
-
-    const mouseNeed = inv.filter(x => (x.Mouse || "").toLowerCase() !== "ada").length;
-    const kbNeed   = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
-
-    new Chart(chartAksesoris, {
-        type:"bar",
-        data:{
-            labels:["Kebutuhan Mouse","Kebutuhan Keyboard"],
-            datasets:[{ data:[mouseNeed, kbNeed] }]
-        }
-    });
-}
-
-function renderMap(MAP, INV) {
-    let html = '<div class="flex flex-col gap-4 items-center">';
-
-    MAP.forEach(row => {
-        let left = row.slice(0,6);
-        let right = row.slice(7);
-
-        html += `
-            <div class="flex gap-12">
-                <div class="grid grid-cols-6">${makeCells(left)}</div>
-                <div class="grid grid-cols-4">${makeCells(right)}</div>
+            <div class="card">
+                <h3>Total Laptop</h3>
+                <div class="value" id="totalLaptop">0</div>
             </div>
-        `;
-    });
 
-    html += "</div>";
-    document.getElementById("mapContainer").innerHTML = html;
-}
-
-function makeCells(mejaArr) {
-    let html = "";
-
-    mejaArr.forEach(num => {
-        if (!num) {
-            html += `<div class="map-cell empty"></div>`;
-            return;
-        }
-
-        const item = INV.find(x => Number(x["NO MEJA"]) === Number(num));
-        let cls = "empty";
-
-        if (item) {
-            let k = item.Kondisi?.toLowerCase();
-            if (k === "normal") cls = "normal";
-            else if (k.includes("ringan")) cls = "ringan";
-            else if (k.includes("berat")) cls = "berat";
-        }
-
-        html += `<div class="map-cell ${cls}" onclick="showDetail(${num})">${num}</div>`;
-    });
-
-    return html;
-}
-
-function showDetail(no) {
-    const item = INV.find(x => Number(x["NO MEJA"]) === no);
-
-    const html = `
-        <div class="modal" onclick="closeModal()">
-            <div class="bg-white rounded-xl shadow p-6 max-w-lg w-full"
-                 onclick="event.stopPropagation()">
-
-                <h2 class="text-2xl font-bold mb-4">Detail Meja ${no}</h2>
-
-                ${item ? `
-                    <p><b>No Inventaris:</b> ${item["NO INVENTARIS"]}</p>
-                    <p><b>Nama Barang:</b> ${item["NAMA BARANG"]}</p>
-                    <p><b>Merek / Tipe:</b> ${item["Merek / Tipe"]}</p>
-                    <p><b>OS:</b> ${item["OS"]}</p>
-                    <p><b>Kondisi:</b> ${item["Kondisi"]}</p>
-                    <p><b>Mouse:</b> ${item["Mouse"]}</p>
-                    <p><b>Keyboard:</b> ${item["Keyboard"]}</p>
-                    <p><b>Keterangan:</b> ${item["Keterangan"]}</p>
-                ` : `
-                    <p class='text-red-600 font-bold'>Tidak ada laptop di meja ini.</p>
-                `}
+            <div class="card">
+                <h3>Total Chromebook</h3>
+                <div class="value" id="totalChromebook">0</div>
             </div>
+
+            <div class="card">
+                <h3>Normal</h3>
+                <div class="value" id="normal">0</div>
+            </div>
+
+            <div class="card">
+                <h3>Rusak Ringan</h3>
+                <div class="value" id="ringan">0</div>
+            </div>
+
+            <div class="card">
+                <h3>Rusak Berat</h3>
+                <div class="value" id="berat">0</div>
+            </div>
+
+            <div class="card">
+                <h3>Kebutuhan Mouse</h3>
+                <div class="value" id="needMouse">0</div>
+            </div>
+
+            <div class="card">
+                <h3>Kebutuhan Keyboard</h3>
+                <div class="value" id="needKeyboard">0</div>
+            </div>
+
         </div>
-    `;
 
-    const modal = document.getElementById("modal");
-    modal.innerHTML = html;
-    modal.classList.remove("hidden");
-}
+        <!-- MAP -->
+        <div class="map-container">
+            <h2>Mapping Laptop (Sheet MAP)</h2>
+            <div class="map-grid" id="mapGrid"></div>
+        </div>
 
-function closeModal() {
-    document.getElementById("modal").classList.add("hidden");
-}
+        <button onclick="exportPDF()">Export PDF</button>
 
-async function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("p", "mm", "a4");
+    </div>
 
-    const canvas = await html2canvas(document.body, { scale:2 });
-    const img = canvas.toDataURL("image/png");
+    <!-- Modal -->
+    <div id="modal">
+        <div id="modalBox">
+            <span class="closeBtn" onclick="closeModal()">✖</span>
+            <h2>Detail Perangkat</h2>
+            <table class="detail" id="detailTable"></table>
+        </div>
+    </div>
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgProps = pdf.getImageProperties(img);
-    const imgHeight = imgProps.height * pageWidth / imgProps.width;
+    <script>
+        const fileURL = "assets/inventarislab2.xlsx?raw=true";
+        let INV = [];
 
-    pdf.addImage(img, "PNG", 0, 0, pageWidth, imgHeight);
-    pdf.save("Dashboard-Inventaris-Lab2.pdf");
-}
+        async function loadExcel() {
+            const res = await fetch(fileURL);
+            const ab = await res.arrayBuffer();
+            const wb = XLSX.read(ab);
 
-loadExcel();
-</script>
+            INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
+            const MAP = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header: 1 });
+
+            processData(INV);
+            renderMAP(MAP);
+        }
+
+        function processData(inv) {
+
+            const totalDevice = inv.filter(x => (x.OS || "").trim() !== "").length;
+            const totalLaptop = inv.filter(x => (x.OS || "").toLowerCase().includes("windows")).length;
+            const totalChromebook = inv.filter(x => (x.OS || "").toLowerCase().includes("chromebook")).length;
+
+            const normal = inv.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
+            const ringan = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
+            const berat = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
+
+            const needMouse = inv.filter(x => (x.Mouse || "").trim() === "").length;
+            const needKeyboard = inv.filter(x => (x.Keyboard || "").trim() === "").length;
+
+            // Update dashboard
+            document.getElementById("totalDevice").innerText = totalDevice;
+            document.getElementById("totalLaptop").innerText = totalLaptop;
+            document.getElementById("totalChromebook").innerText = totalChromebook;
+            document.getElementById("normal").innerText = normal;
+            document.getElementById("ringan").innerText = ringan;
+            document.getElementById("berat").innerText = berat;
+            document.getElementById("needMouse").innerText = needMouse;
+            document.getElementById("needKeyboard").innerText = needKeyboard;
+        }
+
+        function renderMAP(mapData) {
+            const grid = document.getElementById("mapGrid");
+            grid.innerHTML = "";
+
+            mapData.forEach(row => {
+                row.forEach(meja => {
+                    const div = document.createElement("div");
+
+                    if (meja === "" || meja == null) {
+                        div.className = "meja kosong";
+                        div.innerText = "";
+                    } else {
+                        const item = INV.find(x => Number(x["NO MEJA"]) === Number(meja));
+                        let kondisi = "kosong";
+
+                        if (item) {
+                            const k = (item.Kondisi || "").toLowerCase();
+                            if (k === "normal") kondisi = "normal";
+                            else if (k.includes("ringan")) kondisi = "ringan";
+                            else if (k.includes("berat")) kondisi = "berat";
+                        }
+
+                        div.className = "meja " + kondisi;
+                        div.innerText = meja;
+
+                        div.onclick = () => showDetail(meja);
+                    }
+
+                    grid.appendChild(div);
+                });
+            });
+        }
+
+        function showDetail(meja) {
+            const item = INV.find(x => Number(x["NO MEJA"]) === Number(meja));
+
+            const tbl = document.getElementById("detailTable");
+            tbl.innerHTML = "";
+
+            if (!item) {
+                tbl.innerHTML = "<tr><td>Tidak ada data untuk meja ini.</td></tr>";
+            } else {
+                Object.keys(item).forEach(k => {
+                    tbl.innerHTML += `<tr><td><b>${k}</b></td><td>${item[k]}</td></tr>`;
+                });
+            }
+
+            document.getElementById("modal").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("modal").style.display = "none";
+        }
+
+        // Export PDF
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(16);
+            doc.text("Laporan Inventaris Lab 2", 10, 15);
+
+            let y = 30;
+            INV.forEach(item => {
+                doc.setFontSize(10);
+                doc.text(JSON.stringify(item), 10, y);
+                y += 7;
+            });
+
+            doc.save("Laporan-Inventaris-Lab2.pdf");
+        }
+
+        loadExcel();
+    </script>
 
 </body>
+
 </html>
