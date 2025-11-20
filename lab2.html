@@ -23,24 +23,23 @@
         border: 1px solid #ddd;
         margin: 2px;
         border-radius: 6px;
-        background: #fefefe;
         font-weight: bold;
+        font-size: 18px;
+        color: #000;
     }
-    .rusak {
-        background-color: #ffb3b3 !important;
-        color: #700;
-        font-weight: 900;
-    }
+    .normal { background-color: #81ff81; }
+    .ringan { background-color: #ffc266; }
+    .berat  { background-color: #ff7474; }
+    .empty  { background-color: #e5e5e5; }
 </style>
+
 </head>
 <body class="bg-gray-100 p-6">
 
 <h1 class="text-3xl font-bold mb-6">Dashboard Inventaris Laptop Lab 2</h1>
 
-<!-- STATISTIK -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="statsCards"></div>
 
-<!-- GRAFIK -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
     <div class="bg-white p-4 rounded-xl shadow">
         <canvas id="chartKondisi"></canvas>
@@ -50,54 +49,34 @@
     </div>
 </div>
 
-<!-- SEARCH & FILTER -->
-<div class="bg-white p-4 rounded-xl shadow mt-8">
-    <h2 class="text-2xl mb-4">Pencarian & Filter</h2>
-    <div class="flex flex-col md:flex-row gap-4">
-        <input id="searchInput" placeholder="Cari nomor inventaris / meja..."
-            class="border px-3 py-2 rounded w-full" onkeyup="applyFilters()">
-
-        <select id="filterKondisi" onchange="applyFilters()" class="border px-3 py-2 rounded w-64">
-            <option value="ALL">Semua Kondisi</option>
-            <option value="NORMAL">Normal</option>
-            <option value="RUSAK">Rusak</option>
-        </select>
-    </div>
-</div>
-
-<!-- TABEL INVENTARIS -->
 <h2 class="text-3xl font-bold mt-10 mb-4">Data Inventaris (Sheet INV)</h2>
-<div class="bg-white p-4 rounded-xl shadow" id="invTable"></div>
+<div class="bg-white p-4 rounded-xl shadow overflow-auto" id="invTable"></div>
 
-<!-- MAP -->
 <h2 class="text-3xl font-bold mt-10 mb-4">Pemetaan Laptop (Sheet MAP)</h2>
-<div class="bg-white p-4 rounded-xl shadow p-4 overflow-auto" id="mapGrid"></div>
+<div class="bg-white p-4 rounded-xl shadow p-4 overflow-auto" id="mapContainer"></div>
 
 <script>
-let INV_DATA = [];
+let INV = [];
 
 async function loadExcel() {
     const file = "https://raw.githubusercontent.com/yanuar-moga/escape/main/assets/inventarislab2.xlsx";
 
     const data = await fetch(file).then(res => res.arrayBuffer());
-    const workbook = XLSX.read(data, { type: "array" });
+    const wb = XLSX.read(data, { type: "array" });
 
-    const inv = XLSX.utils.sheet_to_json(workbook.Sheets["INV"]);
-    const mapRaw = XLSX.utils.sheet_to_json(workbook.Sheets["MAP"], { header: 1 });
+    INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
+    const MAP_RAW = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header: 1 });
 
-    INV_DATA = inv;
+    const MAP = cleanMap(MAP_RAW);
 
-    const map = cleanMapGrid(mapRaw);
-
-    renderInvTable(inv);
-    renderMap(map, inv);
-    generateStats(inv);
-    generateCharts(inv);
+    renderInvTable(INV);
+    renderStats(INV);
+    renderCharts(INV);
+    renderMap(MAP, INV);
 }
 
-function cleanMapGrid(rawMap) {
-    // Hapus baris kosong
-    return rawMap.filter(row => row.some(cell => cell !== null && cell !== "" && cell !== undefined));
+function cleanMap(mapRaw) {
+    return mapRaw.filter(row => row.some(cell => cell !== null && cell !== ""));
 }
 
 function renderInvTable(data) {
@@ -106,46 +85,21 @@ function renderInvTable(data) {
     document.getElementById("invTable").innerHTML = html;
 }
 
-function renderMap(map, inv) {
-    let html = `<div class="grid grid-cols-${map[0].length} gap-2">`;
+function renderStats(inv) {
+    const normal = inv.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
+    const ringan = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
+    const berat = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
 
-    map.forEach(row => {
-        row.forEach(cell => {
-            if (cell && !isNaN(cell)) {
-                const item = inv.find(x => String(x["No Inventaris"]) === String(cell));
-
-                const rusak = item ? (item["Kondisi Fisik"] || "").toLowerCase().includes("rusak") : false;
-
-                html += `<div class="map-cell ${rusak ? 'rusak' : ''}">${cell}</div>`;
-            } else {
-                html += `<div class="map-cell bg-gray-200"></div>`;
-            }
-        });
-    });
-
-    html += "</div>";
-
-    document.getElementById("mapGrid").innerHTML = html;
-}
-
-function generateStats(inv) {
-    const rusak = inv.filter(i => (i["Kondisi Fisik"] || "").toLowerCase().includes("rusak")).length;
-    const normal = inv.length - rusak;
-
-    const mouseAda = inv.filter(i => (i.Mouse || "").toUpperCase() === "ADA").length;
-    const mouseTidak = inv.length - mouseAda;
-
-    const kbAda = inv.filter(i => (i.Keyboard || "").toUpperCase() === "ADA").length;
-    const kbTidak = inv.length - kbAda;
+    const mouseAda = inv.filter(x => (x.Mouse || "").toUpperCase() === "ADA").length;
+    const kbAda = inv.filter(x => (x.Keyboard || "").toUpperCase() === "ADA").length;
 
     const stats = [
         { title: "Total Laptop", value: inv.length },
-        { title: "Laptop Normal", value: normal },
-        { title: "Laptop Rusak", value: rusak },
-        { title: "Mouse ADA", value: mouseAda },
-        { title: "Mouse TIDAK", value: mouseTidak },
-        { title: "Keyboard ADA", value: kbAda },
-        { title: "Keyboard TIDAK", value: kbTidak },
+        { title: "Normal", value: normal },
+        { title: "Rusak Ringan", value: ringan },
+        { title: "Rusak Berat", value: berat },
+        { title: "Mouse Ada", value: mouseAda },
+        { title: "Keyboard Ada", value: kbAda },
     ];
 
     let html = "";
@@ -160,22 +114,23 @@ function generateStats(inv) {
     document.getElementById("statsCards").innerHTML = html;
 }
 
-function generateCharts(inv) {
-    const rusak = inv.filter(i => (i["Kondisi Fisik"] || "").toLowerCase().includes("rusak")).length;
-    const normal = inv.length - rusak;
+function renderCharts(inv) {
+    const normal = inv.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
+    const ringan = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
+    const berat = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
 
     new Chart(document.getElementById("chartKondisi"), {
         type: "pie",
         data: {
-            labels: ["Normal", "Rusak"],
-            datasets: [{ data: [normal, rusak] }]
+            labels: ["Normal", "Rusak Ringan", "Rusak Berat"],
+            datasets: [{ data: [normal, ringan, berat] }]
         }
     });
 
-    const mouseAda = inv.filter(i => (i.Mouse || "").toUpperCase() === "ADA").length;
+    const mouseAda = inv.filter(x => (x.Mouse || "").toUpperCase() === "ADA").length;
     const mouseTidak = inv.length - mouseAda;
 
-    const kbAda = inv.filter(i => (i.Keyboard || "").toUpperCase() === "ADA").length;
+    const kbAda = inv.filter(x => (x.Keyboard || "").toUpperCase() === "ADA").length;
     const kbTidak = inv.length - kbAda;
 
     new Chart(document.getElementById("chartAksesoris"), {
@@ -187,23 +142,53 @@ function generateCharts(inv) {
     });
 }
 
-function applyFilters() {
-    const search = document.getElementById("searchInput").value.toLowerCase();
-    const filter = document.getElementById("filterKondisi").value;
+function renderMap(map, inv) {
+    const mid = Math.floor(map[0].length / 2); 
 
-    const filtered = INV_DATA.filter(row => {
-        let kondisi = (row["Kondisi Fisik"] || "").toLowerCase();
+    let left = [];
+    let right = [];
 
-        if (filter === "RUSAK" && !kondisi.includes("rusak")) return false;
-        if (filter === "NORMAL" && kondisi.includes("rusak")) return false;
-
-        const rowText = JSON.stringify(row).toLowerCase();
-        if (!rowText.includes(search)) return false;
-
-        return true;
+    map.forEach(row => {
+        left.push(row.slice(0, mid));
+        right.push(row.slice(mid));
     });
 
-    renderInvTable(filtered);
+    let html = `
+    <div class="flex gap-10">
+        <div>${makeGrid(left, inv)}</div>
+        <div>${makeGrid(right, inv)}</div>
+    </div>`;
+
+    document.getElementById("mapContainer").innerHTML = html;
+}
+
+function makeGrid(block, inv) {
+    let cols = block[0].length;
+    let html = `<div class="grid grid-cols-${cols}">`;
+
+    block.forEach(row => {
+        row.forEach(cell => {
+            if (cell === "" || cell == null) {
+                html += `<div class="map-cell empty"></div>`;
+                return;
+            }
+
+            const item = inv.find(x => Number(x["NO MEJA"]) === Number(cell));
+            let kelas = "empty";
+
+            if (item) {
+                let k = (item.Kondisi || "").toLowerCase();
+                if (k === "normal") kelas = "normal";
+                else if (k.includes("ringan")) kelas = "ringan";
+                else if (k.includes("berat")) kelas = "berat";
+            }
+
+            html += `<div class="map-cell ${kelas}">${cell}</div>`;
+        });
+    });
+
+    html += `</div>`;
+    return html;
 }
 
 loadExcel();
