@@ -125,7 +125,7 @@ function renderMap() {
     rows.forEach(r=>r.forEach(no=>{
         const d=document.createElement("div");
         if(no===""){ d.className="meja kosong"; grid.appendChild(d); return; }
-        const item = INV.find(x=>Number(x["NO MEJA"])===Number(no));
+        const item = INV.find(x => Number(String(x["NO MEJA"]).trim()) === Number(no));(x=>Number(x["NO MEJA"])===Number(no));
         let cls="kosong";
         if(item){ let k=(item.Kondisi||"").toLowerCase(); if(k==="normal")cls="normal"; else if(k.includes("ringan"))cls="ringan"; else if(k.includes("berat"))cls="berat"; }
         d.className=`meja ${cls}`;
@@ -137,7 +137,7 @@ function renderMap() {
 
 function showDetail(no){
     const box=document.getElementById("detailBox");
-    const item=INV.find(x=>Number(x["NO MEJA"])===no);
+    const item = INV.find(x => Number(String(x["NO MEJA"]).trim()) === Number(no));(x=>Number(x["NO MEJA"])===no);
     box.style.display="block";
     if(!item){ box.innerHTML=`<h3>Meja ${no}</h3>Data tidak ditemukan`; return; }
 
