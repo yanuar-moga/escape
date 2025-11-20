@@ -69,7 +69,7 @@
         .normal { background: #28a745; color: white; }
         .ringan { background: #ffc107; color: black; }
         .berat { background: #dc3545; color: white; }
-        .kosong { background: transparent; border: none; }
+        .kosong { background: transparent; border: none; cursor: default; }
 
         /* POPUP DETAIL */
         #detailBox {
@@ -117,6 +117,9 @@
 <script>
 let INV = [];
 
+/* =============================
+   LOAD EXCEL
+============================= */
 async function loadExcel() {
     const res = await fetch("assets/inventarislab2.xlsx");
     const buf = await res.arrayBuffer();
@@ -157,7 +160,7 @@ function updateDashboard() {
 }
 
 /* =============================
-   RENDER MAP FIXED (A3–K9)
+   RENDER MAP (FIXED)
 ============================= */
 function renderMap() {
     const grid = document.getElementById("mapGrid");
@@ -175,6 +178,7 @@ function renderMap() {
 
             const div = document.createElement("div");
 
+            // ❗ Kosong → tidak berwarna
             if (mejaNum === "") {
                 div.className = "meja kosong";
                 grid.appendChild(div);
@@ -182,7 +186,9 @@ function renderMap() {
             }
 
             const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
-            let kondisiClass = "normal";
+
+            // Default = kosong
+            let kondisiClass = "kosong";
 
             if (item) {
                 let k = (item.Kondisi || "").toLowerCase();
@@ -193,7 +199,8 @@ function renderMap() {
 
             div.className = `meja ${kondisiClass}`;
             div.textContent = mejaNum;
-            div.onclick = () => showDetail(mejaNum);
+
+            if (item) div.onclick = () => showDetail(mejaNum);
 
             grid.appendChild(div);
         });
@@ -207,13 +214,13 @@ function showDetail(no) {
     const box = document.getElementById("detailBox");
     const item = INV.find(x => Number(x["NO MEJA"]) === no);
 
+    box.style.display = "block";
+
     if (!item) {
-        box.style.display = "block";
         box.innerHTML = `<h3>Meja ${no}</h3>Data tidak ditemukan`;
         return;
     }
 
-    box.style.display = "block";
     box.innerHTML = `
         <h3>Detail Meja ${no}</h3>
         <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
