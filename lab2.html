@@ -1,8 +1,12 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Dashboard Inventaris Lab Komputer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.72/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.72/vfs_fonts.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 
     <style>
         body {
@@ -11,8 +15,6 @@
             padding: 20px;
             margin: 0;
         }
-
-        /* HEADER */
         .header {
             background: #0056b3;
             padding: 15px 25px;
@@ -23,125 +25,38 @@
             width: fit-content;
             border-radius: 5px;
         }
-
-        /* DASHBOARD CARDS */
         .card-container {
             display: grid;
             grid-template-columns: repeat(3, 260px);
             gap: 15px;
             margin-top: 20px;
         }
+        .card { background: white; border-left: 6px solid #ffcc00; padding: 15px; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.15); font-size: 18px; }
+        .card-title { color: #0056b3; font-weight: bold; }
+        #mapGrid { display: grid; grid-template-columns: repeat(11, 55px); gap: 6px; margin-top: 30px; margin-bottom: 40px; }
 
-        .card {
-            background: white;
-            border-left: 6px solid #ffcc00;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-            font-size: 18px;
-        }
-
-        .card-title {
-            color: #0056b3;
-            font-weight: bold;
-        }
-
-        /* MAP GRID */
-        #mapGrid {
-            display: grid;
-            grid-template-columns: repeat(11, 55px);
-            gap: 6px;
-            margin-top: 30px;
-            margin-bottom: 40px;
-        }
-
-        .meja {
-            width: 55px;
-            height: 45px;
-            border-radius: 6px;
-            font-weight: bold;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        /* Animasi Glow */
-        .ringan {
-            background: #ffc107; 
-            color: black;
-            animation: glowYellow 1.5s infinite alternate;
-        }
-        @keyframes glowYellow {
-            from { box-shadow: 0 0 6px #ffeb99; }
-            to { box-shadow: 0 0 12px #ffc107; }
-        }
-
-        .berat { 
-            background: #dc3545; 
-            color: white;
-            animation: glowRed 1.5s infinite alternate;
-        }
-        @keyframes glowRed {
-            from { box-shadow: 0 0 6px #ff9999; }
-            to { box-shadow: 0 0 15px #dc3545; }
-        }
-
+        .meja { width: 55px; height: 45px; border-radius: 6px; font-weight: bold; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; }
         .normal { background: #28a745; color: white; }
+        .ringan { background: #ffc107; color: black; animation: glowYellow 1.4s infinite; }
+        .berat { background: #dc3545; color: white; animation: glowRed 1.4s infinite; }
         .kosong { background: transparent; border: none; cursor: default; }
 
-        /* POPUP DETAIL */
-        #detailBox {
-            background: white;
-            width: 360px;
-            padding: 18px;
-            border-radius: 8px;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-            display: none;
-            margin-bottom: 40px;
-        }
+        @keyframes glowYellow { 0%{box-shadow:0 0 4px #ffc107;} 50%{box-shadow:0 0 12px #ffdd55;} 100%{box-shadow:0 0 4px #ffc107;} }
+        @keyframes glowRed { 0%{box-shadow:0 0 4px #dc3545;} 50%{box-shadow:0 0 14px #ff5555;} 100%{box-shadow:0 0 4px #dc3545;} }
 
-        #detailBox h3 {
-            margin-top: 0;
-            color: #0056b3;
-            border-left: 6px solid #ffcc00;
-            padding-left: 8px;
-        }
+        #detailBox { background: white; width: 380px; padding: 18px; border-radius: 8px; box-shadow: 0 3px 8px rgba(0,0,0,0.2); display: none; margin-bottom:40px; }
+        #detailBox h3 { margin-top: 0; color: #0056b3; border-left: 6px solid #ffcc00; padding-left: 8px; }
 
-        /* GRAFIK */
-        .chart-container {
-            margin-top: 40px;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-            border-left: 8px solid #0056b3;
-        }
+        /* Charts 3 kolom */
+        .chart-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 40px; }
+        .chart-card { background:white; padding:15px; border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.15); }
 
-        /* PDF Button */
-        #pdfBtn {
-            background: #ffcc00;
-            padding: 12px 20px;
-            border: none;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            margin: 20px 0;
-            color: #0056b3;
-            transition: 0.3s;
-        }
-        #pdfBtn:hover {
-            background: #ffdb4d;
-        }
+        #exportBtn { margin-top:25px; background:#0056b3; color:white; padding:10px 18px; border-radius:6px; cursor:pointer; border:none; font-size:16px; }
     </style>
 </head>
 <body>
-
 <div class="header">📘 Dashboard Inventaris Lab Komputer</div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" class="card-container">
     <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
     <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
@@ -155,181 +70,51 @@
     <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
 </div>
 
-<!-- GRAFIK -->
-<h2 style="color:#0056b3;margin-top:45px;">📊 Grafik Inventaris Perangkat</h2>
-
-<div class="chart-container">
-    <canvas id="chartPie"></canvas>
-</div>
-
-<div class="chart-container">
-    <canvas id="chartBar"></canvas>
-</div>
-
-<div class="chart-container">
-    <canvas id="chartOS"></canvas>
-</div>
-
-<div class="chart-container">
-    <canvas id="chartLine"></canvas>
-</div>
-
-<button id="pdfBtn">📄 Export PDF</button>
-
-<!-- DETAIL -->
+<h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab</h2>
+<div id="mapGrid"></div>
 <div id="detailBox"></div>
 
-<h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab</h2>
+<!-- 3 Chart Kolom -->
+<div class="chart-row">
+    <div class="chart-card"><canvas id="chartPie"></canvas></div>
+    <div class="chart-card"><canvas id="chartBar"></canvas></div>
+    <div class="chart-card"><canvas id="chartOS"></canvas></div>
+</div>
 
-<div id="mapGrid"></div>
-
-
-<!-- LIBRARIES -->
-<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<button id="exportBtn">📄 Export PDF</button>
 
 <script>
 let INV = [];
-
-/* LOAD EXCEL */
 async function loadExcel() {
     const res = await fetch("assets/inventarislab2.xlsx");
     const buf = await res.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
-
     INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
-
-    updateDashboard();
-    renderCharts();
-    renderMap();
+    updateDashboard(); renderMap(); renderCharts();
 }
 loadExcel();
 
-/* DASHBOARD */
 function updateDashboard() {
+    const win = INV.filter(x => (x.OS||"").toLowerCase()==="windows 10 pro 64 bit");
+    const chrome = INV.filter(x => (x.OS||"").toLowerCase()==="chromebook");
+    const normal = INV.filter(x => (x.Kondisi||"").toLowerCase()==="normal");
+    const ringan = INV.filter(x => (x.Kondisi||"").toLowerCase().includes("ringan"));
+    const berat  = INV.filter(x => (x.Kondisi||"").toLowerCase().includes("berat"));
+    const needMouse = INV.filter(x => (x.Mouse||"").toLowerCase()==="tidak");
+    const needKeyboard = INV.filter(x => (x.Keyboard||"").toLowerCase()==="tidak");
 
-    const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
-    const chrome = INV.filter(x => (x.OS || "").toLowerCase() === "chromebook");
-
-    const normal   = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal");
-    const ringan   = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan"));
-    const berat    = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat"));
-
-    const needMouse    = INV.filter(x => (x.Mouse || "").toLowerCase() === "tidak");
-    const needKeyboard = INV.filter(x => (x.Keyboard || "").toLowerCase() === "tidak");
-
-    document.getElementById("totalPerangkat").innerText = win.length + chrome.length;
-    document.getElementById("totalWindows").innerText = win.length;
-    document.getElementById("totalChromebook").innerText = chrome.length;
-
-    document.getElementById("normalCount").innerText = normal.length;
-    document.getElementById("ringanCount").innerText = ringan.length;
-    document.getElementById("beratCount").innerText = berat.length;
-
-    document.getElementById("mouseNeed").innerText = needMouse.length;
-    document.getElementById("keyboardNeed").innerText = needKeyboard.length;
+    totalPerangkat.innerText = win.length + chrome.length;
+    totalWindows.innerText = win.length;
+    totalChromebook.innerText = chrome.length;
+    normalCount.innerText = normal.length;
+    ringanCount.innerText = ringan.length;
+    beratCount.innerText = berat.length;
+    mouseNeed.innerText = needMouse.length;
+    keyboardNeed.innerText = needKeyboard.length;
 }
 
-/* =============================
-   GRAFIK
-============================= */
-function renderCharts() {
-
-    const normal = INV.filter(x => (x.Kondisi||"").toLowerCase()==="normal").length;
-    const ringan = INV.filter(x => (x.Kondisi||"").toLowerCase().includes("ringan")).length;
-    const berat  = INV.filter(x => (x.Kondisi||"").toLowerCase().includes("berat")).length;
-
-    const win = INV.filter(x => (x.OS||"").toLowerCase()==="windows 10 pro 64 bit").length;
-    const chrome = INV.filter(x => (x.OS||"").toLowerCase()==="chromebook").length;
-
-    // PIE KONDISI
-    new Chart(document.getElementById("chartPie"), {
-        type: "pie",
-        data: {
-            labels: ["Normal", "Rusak Ringan", "Rusak Berat"],
-            datasets: [{
-                data: [normal, ringan, berat],
-                backgroundColor: ["#0056b3", "#ffcc00", "#dc3545"]
-            }]
-        }
-    });
-
-    // BAR KONDISI
-    new Chart(document.getElementById("chartBar"), {
-        type: "bar",
-        data: {
-            labels: ["Normal", "Ringan", "Berat"],
-            datasets: [{
-                label: "Jumlah",
-                data: [normal, ringan, berat],
-                backgroundColor: ["#0056b3", "#ffcc00", "#dc3545"]
-            }]
-        }
-    });
-
-    // PIE OS
-    new Chart(document.getElementById("chartOS"), {
-        type: "pie",
-        data: {
-            labels: ["Windows", "Chromebook"],
-            datasets: [{
-                data: [win, chrome],
-                backgroundColor: ["#0056b3", "#28a745"]
-            }]
-        }
-    });
-
-    // LINE TREND
-    new Chart(document.getElementById("chartLine"), {
-        type: "line",
-        data: {
-            labels: ["Normal", "Ringan", "Berat"],
-            datasets: [{
-                label: "Jumlah Perangkat",
-                data: [normal, ringan, berat],
-                borderColor: "#0056b3",
-                backgroundColor: "#ffcc00"
-            }]
-        }
-    });
-}
-
-/* PDF EXPORT */
-document.getElementById("pdfBtn").onclick = async () => {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-
-    pdf.text("Laporan Inventaris Lab Komputer", 10, 10);
-
-    let y = 20;
-
-    pdf.text("Total Perangkat: " + document.getElementById("totalPerangkat").innerText, 10, y); y+=8;
-    pdf.text("Normal: " + document.getElementById("normalCount").innerText, 10, y); y+=8;
-    pdf.text("Ringan: " + document.getElementById("ringanCount").innerText, 10, y); y+=8;
-    pdf.text("Berat: " + document.getElementById("beratCount").innerText, 10, y); y+=8;
-
-    const charts = ["chartPie","chartBar","chartOS","chartLine"];
-
-    for (let id of charts) {
-        let canvas = document.getElementById(id);
-        let img = canvas.toDataURL("image/png", 1.0);
-
-        pdf.addPage();
-        pdf.addImage(img, "PNG", 10, 20, 180, 100);
-    }
-
-    pdf.save("Laporan_Inventaris.pdf");
-};
-
-/* =============================
-   MAP
-============================= */
 function renderMap() {
-    const grid = document.getElementById("mapGrid");
-    grid.innerHTML = "";
-
+    const grid = document.getElementById("mapGrid"); grid.innerHTML="";
     const rows = [
         [22,21,20,19,18,17,"",4,3,2,1],
         [28,27,26,25,24,23,"",8,7,6,5],
@@ -337,66 +122,75 @@ function renderMap() {
         [40,39,38,37,36,35,"",16,15,14,13]
     ];
 
-    rows.forEach(r => {
-        r.forEach(mejaNum => {
-
-            const div = document.createElement("div");
-
-            if (mejaNum === "") {
-                div.className = "meja kosong";
-                grid.appendChild(div);
-                return;
-            }
-
-            const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
-            let kondisiClass = "kosong";
-
-            if (item) {
-                let k = (item.Kondisi || "").toLowerCase();
-                if (k === "normal") kondisiClass = "normal";
-                else if (k.includes("ringan")) kondisiClass = "ringan";
-                else if (k.includes("berat")) kondisiClass = "berat";
-            }
-
-            div.className = `meja ${kondisiClass}`;
-            div.textContent = mejaNum;
-
-            if (item) div.onclick = () => showDetail(mejaNum);
-
-            grid.appendChild(div);
-        });
-    });
+    rows.forEach(r=>r.forEach(no=>{
+        const d=document.createElement("div");
+        if(no===""){ d.className="meja kosong"; grid.appendChild(d); return; }
+        const item = INV.find(x=>Number(x["NO MEJA"])===Number(no));
+        let cls="kosong";
+        if(item){ let k=(item.Kondisi||"").toLowerCase(); if(k==="normal")cls="normal"; else if(k.includes("ringan"))cls="ringan"; else if(k.includes("berat"))cls="berat"; }
+        d.className=`meja ${cls}`;
+        d.textContent=no;
+        if(item) d.onclick=()=>showDetail(no);
+        grid.appendChild(d);
+    }));
 }
 
-/* DETAIL */
-function showDetail(no) {
-    const box = document.getElementById("detailBox");
-    const item = INV.find(x => Number(x["NO MEJA"]) === no);
+function showDetail(no){
+    const box=document.getElementById("detailBox");
+    const item=INV.find(x=>Number(x["NO MEJA"])===no);
+    box.style.display="block";
+    if(!item){ box.innerHTML=`<h3>Meja ${no}</h3>Data tidak ditemukan`; return; }
 
-    box.style.display = "block";
+    const ket = item["Keterangan"] ? ` (${item["Keterangan"]})` : "";
 
-    if (!item) {
-        box.innerHTML = `<h3>Detail Meja ${no}</h3>Data tidak ditemukan`;
-        return;
-    }
+    box.innerHTML=`
+      <h3>Detail Meja ${no}</h3>
+      <b>Merek / Tipe:</b> ${item["Merek / Tipe"]||"-"}<br>
+      <b>No Inventaris:</b> ${item["No Inventaris"]||"-"}<br>
+      <b>Processor:</b> ${item["Processor"]||"-"}<br>
+      <b>RAM:</b> ${item["RAM"]||"-"}<br>
+      <b>Storage:</b> ${item["Storage"]||"-"}<br>
+      <b>Layar:</b> ${item["Layar"]||"-"}<br>
+      <b>OS:</b> ${item.OS||"-"}<br>
+      <b>Kondisi:</b> ${item.Kondisi||"-"} ${ket}<br>
+      <b>Mouse:</b> ${item.Mouse||"-"}<br>
+      <b>Keyboard:</b> ${item.Keyboard||"-"}<br>`;
+}
 
-    let ketRusak = item.Keterangan ? ` (${item.Keterangan})` : "";
+/* ================== CHART ================== */
+let pieChart, barChart, osChart;
+function renderCharts(){
+    const normal = INV.filter(x=>(x.Kondisi||"").toLowerCase()==="normal").length;
+    const ringan = INV.filter(x=>(x.Kondisi||"").toLowerCase().includes("ringan")).length;
+    const berat  = INV.filter(x=>(x.Kondisi||"").toLowerCase().includes("berat")).length;
+    const win = INV.filter(x=>(x.OS||"").toLowerCase()==="windows 10 pro 64 bit").length;
+    const chrome = INV.filter(x=>(x.OS||"").toLowerCase()==="chromebook").length;
 
-    box.innerHTML = `
-        <h3>Detail Meja ${no}</h3>
+    pieChart = new Chart(chartPie, { type:'pie', data:{ labels:['Normal','Ringan','Berat'], datasets:[{ data:[normal,ringan,berat] }] } });
 
-        <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
-        <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
-        <b>Processor:</b> ${item.Processor || "-"}<br>
-        <b>RAM:</b> ${item.RAM || "-"}<br>
-        <b>Storage:</b> ${item.Storage || "-"}<br>
-        <b>Layar:</b> ${item.Layar || "-"}<br>
-        <b>OS:</b> ${item.OS || "-"}<br><br>
+    barChart = new Chart(chartBar, { type:'bar', data:{ labels:['Normal','Ringan','Berat'], datasets:[{ data:[normal,ringan,berat] }] } });
 
-        <b>Kondisi:</b> ${item.Kondisi || "-"} ${ketRusak}<br>
-        <b>Mouse:</b> ${item.Mouse || "-"}<br>
-        <b>Keyboard:</b> ${item.Keyboard || "-"}<br>
-    `;
+    osChart = new Chart(chartOS, { type:'doughnut', data:{ labels:['Windows','Chromebook'], datasets:[{ data:[win,chrome] }] } });
+}
+
+/* ============ EXPORT PDF ============ */
+
+document.getElementById("exportBtn").onclick=()=>{
+    const normal = INV.filter(x=>(x.Kondisi||"").toLowerCase()==="normal").length;
+    const ringan = INV.filter(x=>(x.Kondisi||"").toLowerCase().includes("ringan")).length;
+    const berat  = INV.filter(x=>(x.Kondisi||"").toLowerCase().includes("berat")).length;
+
+    const doc = {
+        content:[
+            { text:'Laporan Inventaris Lab Komputer', style:'header' },
+            { text:`Normal: ${normal}`, margin:[0,10,0,0] },
+            { text:`Rusak Ringan: ${ringan}` },
+            { text:`Rusak Berat: ${berat}` },
+            { text:'— Generated Automatically —', style:'footer', margin:[0,30,0,0] }
+        ],
+        styles:{ header:{fontSize:20,bold:true}, footer:{italics:true} }
+    };
+    pdfMake.createPdf(doc).download('laporan.pdf');
 }
 </script>
 
