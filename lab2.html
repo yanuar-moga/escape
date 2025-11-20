@@ -13,24 +13,39 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<!-- html2canvas & jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <style>
     .map-cell {
         width: 60px;
         height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #ddd;
-        margin: 2px;
-        border-radius: 6px;
-        font-weight: bold;
-        font-size: 18px;
-        color: #000;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border:1px solid #ddd;
+        margin:2px;
+        border-radius:8px;
+        font-weight:bold;
+        font-size:18px;
+        cursor:pointer;
     }
-    .normal { background-color: #81ff81; }
-    .ringan { background-color: #ffc266; }
-    .berat  { background-color: #ff7474; }
-    .empty  { background-color: #e5e5e5; }
+    .normal { background:#7CFF7C; }
+    .ringan { background:#FFD27F; }
+    .berat { background:#FF7C7C; }
+    .empty { background:#dcdcdc; }
+
+    .modal {
+        position: fixed;
+        top:0; left:0;
+        width:100%; height:100%;
+        background:rgba(0,0,0,0.5);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        z-index:50;
+    }
 </style>
 
 </head>
@@ -38,7 +53,11 @@
 
 <h1 class="text-3xl font-bold mb-6">Dashboard Inventaris Laptop Lab 2</h1>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="statsCards"></div>
+<button onclick="exportPDF()" class="px-4 py-2 bg-blue-600 text-white rounded shadow">
+    Export PDF (Dashboard)
+</button>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6" id="statsCards"></div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
     <div class="bg-white p-4 rounded-xl shadow">
@@ -52,8 +71,12 @@
 <h2 class="text-3xl font-bold mt-10 mb-4">Data Inventaris (Sheet INV)</h2>
 <div class="bg-white p-4 rounded-xl shadow overflow-auto" id="invTable"></div>
 
-<h2 class="text-3xl font-bold mt-10 mb-4">Pemetaan Laptop (Sheet MAP)</h2>
-<div class="bg-white p-4 rounded-xl shadow p-4 overflow-auto" id="mapContainer"></div>
+<h2 class="text-3xl font-bold mt-10 mb-4 text-center">Pemetaan Laptop</h2>
+<div class="text-center font-bold mb-4 text-lg">MEJA GURU</div>
+
+<div class="bg-white p-4 rounded-xl shadow overflow-auto" id="mapContainer"></div>
+
+<div id="modal" class="hidden"></div>
 
 <script>
 let INV = [];
@@ -62,21 +85,17 @@ async function loadExcel() {
     const file = "https://raw.githubusercontent.com/yanuar-moga/escape/main/assets/inventarislab2.xlsx";
 
     const data = await fetch(file).then(res => res.arrayBuffer());
-    const wb = XLSX.read(data, { type: "array" });
+    const wb = XLSX.read(data, { type:"array" });
 
     INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
-    const MAP_RAW = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header: 1 });
+    const MAP_RAW = XLSX.utils.sheet_to_json(wb.Sheets["MAP"], { header:1 });
 
-    const MAP = cleanMap(MAP_RAW);
+    const MAP = MAP_RAW.filter(r => r.some(c => c !== null && c !== ""));
 
     renderInvTable(INV);
     renderStats(INV);
     renderCharts(INV);
     renderMap(MAP, INV);
-}
-
-function cleanMap(mapRaw) {
-    return mapRaw.filter(row => row.some(cell => cell !== null && cell !== ""));
 }
 
 function renderInvTable(data) {
@@ -86,20 +105,34 @@ function renderInvTable(data) {
 }
 
 function renderStats(inv) {
-    const normal = inv.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
-    const ringan = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
-    const berat = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
+    const normal = inv.filter(x => x.Kondisi?.toLowerCase() === "normal").length;
+    const ringan = inv.filter(x => x.Kondisi?.toLowerCase().includes("ringan")).length;
+    const berat = inv.filter(x => x.Kondisi?.toLowerCase().includes("berat")).length;
 
-    const mouseAda = inv.filter(x => (x.Mouse || "").toUpperCase() === "ADA").length;
-    const kbAda = inv.filter(x => (x.Keyboard || "").toUpperCase() === "ADA").length;
+    const laptopCount = inv.filter(x => {
+        const t = (x["Merek / Tipe"] || "").toLowerCase();
+        return t.includes("acer") || t.includes("asus") || t.includes("hp") ||
+               t.includes("lenovo") || t.includes("dell") || t.includes("toshiba");
+    }).length;
+
+    const chromebookCount = inv.filter(x => {
+        const t = (x["Merek / Tipe"] || "").toLowerCase();
+        return t.includes("chromebook");
+    }).length;
+
+    const mouseAda = inv.filter(x => x.Mouse?.toUpperCase() === "ADA").length;
+    const kbAda = inv.filter(x => x.Keyboard?.toUpperCase() === "ADA").length;
+    const mouseLess = inv.length - mouseAda;
+    const kbLess = inv.length - kbAda;
 
     const stats = [
-        { title: "Total Laptop", value: inv.length },
-        { title: "Normal", value: normal },
-        { title: "Rusak Ringan", value: ringan },
-        { title: "Rusak Berat", value: berat },
-        { title: "Mouse Ada", value: mouseAda },
-        { title: "Keyboard Ada", value: kbAda },
+        { title:"Total Laptop", value:laptopCount },
+        { title:"Total Chromebook", value:chromebookCount },
+        { title:"Laptop Normal", value:normal },
+        { title:"Rusak Ringan", value:ringan },
+        { title:"Rusak Berat", value:berat },
+        { title:"Mouse Kurang", value:mouseLess },
+        { title:"Keyboard Kurang", value:kbLess },
     ];
 
     let html = "";
@@ -115,80 +148,143 @@ function renderStats(inv) {
 }
 
 function renderCharts(inv) {
-    const normal = inv.filter(x => (x.Kondisi || "").toLowerCase() === "normal").length;
-    const ringan = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan")).length;
-    const berat = inv.filter(x => (x.Kondisi || "").toLowerCase().includes("berat")).length;
+    const normal = inv.filter(x => x.Kondisi?.toLowerCase() === "normal").length;
+    const ringan = inv.filter(x => x.Kondisi?.toLowerCase().includes("ringan")).length;
+    const berat = inv.filter(x => x.Kondisi?.toLowerCase().includes("berat")).length;
 
-    new Chart(document.getElementById("chartKondisi"), {
-        type: "pie",
-        data: {
-            labels: ["Normal", "Rusak Ringan", "Rusak Berat"],
-            datasets: [{ data: [normal, ringan, berat] }]
+    new Chart(chartKondisi, {
+        type:"pie",
+        data:{
+            labels:["Normal","Ringan","Berat"],
+            datasets:[{ data:[normal, ringan, berat] }]
         }
     });
 
-    const mouseAda = inv.filter(x => (x.Mouse || "").toUpperCase() === "ADA").length;
-    const mouseTidak = inv.length - mouseAda;
+    const mouseAda = inv.filter(x => x.Mouse?.toUpperCase() === "ADA").length;
+    const kbAda = inv.filter(x => x.Keyboard?.toUpperCase() === "ADA").length;
 
-    const kbAda = inv.filter(x => (x.Keyboard || "").toUpperCase() === "ADA").length;
-    const kbTidak = inv.length - kbAda;
-
-    new Chart(document.getElementById("chartAksesoris"), {
-        type: "bar",
-        data: {
-            labels: ["Mouse Ada", "Mouse Tidak", "Keyboard Ada", "Keyboard Tidak"],
-            datasets: [{ data: [mouseAda, mouseTidak, kbAda, kbTidak] }]
+    new Chart(chartAksesoris, {
+        type:"bar",
+        data:{
+            labels:["Mouse Ada","Mouse Tidak","Keyboard Ada","Keyboard Tidak"],
+            datasets:[{
+                data:[
+                    mouseAda, inv.length - mouseAda,
+                    kbAda, inv.length - kbAda
+                ]
+            }]
         }
     });
 }
 
-function renderMap(map, inv) {
-    const mid = Math.floor(map[0].length / 2); 
+function renderMap(MAP, INV) {
+    let html = '<div class="flex justify-center gap-16">';
 
-    let left = [];
-    let right = [];
+    MAP.forEach(row => {
+        let left = row.slice(0,6);
+        let right = row.slice(7);
 
-    map.forEach(row => {
-        left.push(row.slice(0, mid));
-        right.push(row.slice(mid));
+        html += `
+        <div class="grid grid-cols-6">${makeCells(left, INV)}</div>
+        <div class="grid grid-cols-4">${makeCells(right, INV)}</div>
+        `;
     });
 
-    let html = `
-    <div class="flex gap-10">
-        <div>${makeGrid(left, inv)}</div>
-        <div>${makeGrid(right, inv)}</div>
-    </div>`;
-
+    html += "</div>";
     document.getElementById("mapContainer").innerHTML = html;
 }
 
-function makeGrid(block, inv) {
-    let cols = block[0].length;
-    let html = `<div class="grid grid-cols-${cols}">`;
+function makeCells(row, INV) {
+    let html = "";
+    row.forEach(num => {
+        if (!num) {
+            html += `<div class="map-cell empty"></div>`;
+            return;
+        }
 
-    block.forEach(row => {
-        row.forEach(cell => {
-            if (cell === "" || cell == null) {
-                html += `<div class="map-cell empty"></div>`;
-                return;
-            }
+        const item = INV.find(x => Number(x["NO MEJA"]) === Number(num));
+        let cls = "empty";
 
-            const item = inv.find(x => Number(x["NO MEJA"]) === Number(cell));
-            let kelas = "empty";
+        if (item) {
+            const k = item.Kondisi.toLowerCase();
+            if (k === "normal") cls = "normal";
+            else if (k.includes("ringan")) cls = "ringan";
+            else if (k.includes("berat")) cls = "berat";
+        }
 
-            if (item) {
-                let k = (item.Kondisi || "").toLowerCase();
-                if (k === "normal") kelas = "normal";
-                else if (k.includes("ringan")) kelas = "ringan";
-                else if (k.includes("berat")) kelas = "berat";
-            }
-
-            html += `<div class="map-cell ${kelas}">${cell}</div>`;
-        });
+        html += `<div class="map-cell ${cls}" onclick="showDetail(${num})">${num}</div>`;
     });
 
-    html += `</div>`;
     return html;
+}
+
+function showDetail(noMeja) {
+    const item = INV.find(x => Number(x["NO MEJA"]) === Number(noMeja));
+
+    const merkType = item ? item["Merek / Tipe"] : "Tidak ada";
+
+    let modalHTML = `
+    <div class="modal" onclick="closeModal()">
+        <div class="bg-white p-6 rounded-xl shadow max-w-lg w-full" onclick="event.stopPropagation()">
+
+            <h2 class="text-2xl font-bold mb-4">Detail Meja ${noMeja}</h2>
+
+            ${item ? `
+                <p><b>No Inventaris:</b> ${item["NO INVENTARIS"] || "-"}</p>
+                <p><b>Nama Barang:</b> ${item["NAMA BARANG"] || "-"}</p>
+                <p><b>Merek / Tipe:</b> ${merkType}</p>
+                <p><b>Kondisi:</b> ${item["Kondisi"]}</p>
+                <p><b>Mouse:</b> ${item.Mouse}</p>
+                <p><b>Keyboard:</b> ${item.Keyboard}</p>
+                <p><b>Keterangan:</b> ${item.Keterangan || "-"}</p>
+
+                <div class="mt-6 bg-gray-100 p-4 rounded-xl">
+                    <h3 class="font-bold mb-2">Chart Merk</h3>
+                    <canvas id="chartMerk" width="300" height="200"></canvas>
+                </div>
+            ` : `<p class='text-red-600 font-bold'>Tidak ada laptop di meja ini.</p>`}
+
+        </div>
+    </div>`;
+
+    document.getElementById("modal").innerHTML = modalHTML;
+    document.getElementById("modal").classList.remove("hidden");
+
+    if (item) {
+        setTimeout(() => loadMerkChart(merkType), 200);
+    }
+}
+
+function loadMerkChart(merk) {
+    new Chart(document.getElementById("chartMerk"), {
+        type: "pie",
+        data: {
+            labels: [merk],
+            datasets: [{
+                data: [1]
+            }]
+        }
+    });
+}
+
+function closeModal() {
+    document.getElementById("modal").classList.add("hidden");
+}
+
+async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const element = document.body;
+    const canvas = await html2canvas(element, { scale:2 });
+    const img = canvas.toDataURL("image/png");
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgProps = pdf.getImageProperties(img);
+    const imgHeight = imgProps.height * pageWidth / imgProps.width;
+
+    pdf.addImage(img, "PNG", 0, 0, pageWidth, imgHeight);
+    pdf.save("Dashboard-Inventaris-Lab2.pdf");
 }
 
 loadExcel();
