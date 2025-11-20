@@ -68,9 +68,6 @@
     </div>
 </div>
 
-<h2 class="text-3xl font-bold mt-10 mb-4">Data Inventaris (Sheet INV)</h2>
-<div class="bg-white p-4 rounded-xl shadow overflow-auto" id="invTable"></div>
-
 <h2 class="text-3xl font-bold mt-10 mb-4 text-center">Pemetaan Laptop</h2>
 <div class="text-center font-bold mb-4 text-lg">MEJA GURU</div>
 
@@ -92,16 +89,9 @@ async function loadExcel() {
 
     const MAP = MAP_RAW.filter(r => r.some(c => c !== null && c !== ""));
 
-    renderInvTable(INV);
     renderStats(INV);
     renderCharts(INV);
     renderMap(MAP, INV);
-}
-
-function renderInvTable(data) {
-    const sheet = XLSX.utils.json_to_sheet(data);
-    const html = XLSX.utils.sheet_to_html(sheet);
-    document.getElementById("invTable").innerHTML = html;
 }
 
 function renderStats(inv) {
@@ -109,30 +99,21 @@ function renderStats(inv) {
     const ringan = inv.filter(x => x.Kondisi?.toLowerCase().includes("ringan")).length;
     const berat = inv.filter(x => x.Kondisi?.toLowerCase().includes("berat")).length;
 
-    const laptopCount = inv.filter(x => {
-        const t = (x["Merek / Tipe"] || "").toLowerCase();
-        return t.includes("acer") || t.includes("asus") || t.includes("hp") ||
-               t.includes("lenovo") || t.includes("dell") || t.includes("toshiba");
-    }).length;
+    const chromebook = inv.filter(x => (x.OS || "").toLowerCase().includes("chrome")).length;
 
-    const chromebookCount = inv.filter(x => {
-        const t = (x["Merek / Tipe"] || "").toLowerCase();
-        return t.includes("chromebook");
-    }).length;
+    const laptopCount = inv.length - chromebook;
 
-    const mouseAda = inv.filter(x => x.Mouse?.toUpperCase() === "ADA").length;
-    const kbAda = inv.filter(x => x.Keyboard?.toUpperCase() === "ADA").length;
-    const mouseLess = inv.length - mouseAda;
-    const kbLess = inv.length - kbAda;
+    const mouseNeed = inv.filter(x => (x.Mouse || "").toLowerCase() !== "ada").length;
+    const kbNeed = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
 
     const stats = [
         { title:"Total Laptop", value:laptopCount },
-        { title:"Total Chromebook", value:chromebookCount },
+        { title:"Total Chromebook", value:chromebook },
         { title:"Laptop Normal", value:normal },
         { title:"Rusak Ringan", value:ringan },
         { title:"Rusak Berat", value:berat },
-        { title:"Mouse Kurang", value:mouseLess },
-        { title:"Keyboard Kurang", value:kbLess },
+        { title:"Kebutuhan Mouse", value:mouseNeed },
+        { title:"Kebutuhan Keyboard", value:kbNeed },
     ];
 
     let html = "";
@@ -160,19 +141,14 @@ function renderCharts(inv) {
         }
     });
 
-    const mouseAda = inv.filter(x => x.Mouse?.toUpperCase() === "ADA").length;
-    const kbAda = inv.filter(x => x.Keyboard?.toUpperCase() === "ADA").length;
+    const mouseNeed = inv.filter(x => (x.Mouse || "").toLowerCase() !== "ada").length;
+    const kbNeed = inv.filter(x => (x.Keyboard || "").toLowerCase() !== "ada").length;
 
     new Chart(chartAksesoris, {
         type:"bar",
         data:{
-            labels:["Mouse Ada","Mouse Tidak","Keyboard Ada","Keyboard Tidak"],
-            datasets:[{
-                data:[
-                    mouseAda, inv.length - mouseAda,
-                    kbAda, inv.length - kbAda
-                ]
-            }]
+            labels:["Kebutuhan Mouse","Kebutuhan Keyboard"],
+            datasets:[{ data:[mouseNeed, kbNeed] }]
         }
     });
 }
@@ -221,8 +197,6 @@ function makeCells(row, INV) {
 function showDetail(noMeja) {
     const item = INV.find(x => Number(x["NO MEJA"]) === Number(noMeja));
 
-    const merkType = item ? item["Merek / Tipe"] : "Tidak ada";
-
     let modalHTML = `
     <div class="modal" onclick="closeModal()">
         <div class="bg-white p-6 rounded-xl shadow max-w-lg w-full" onclick="event.stopPropagation()">
@@ -232,16 +206,12 @@ function showDetail(noMeja) {
             ${item ? `
                 <p><b>No Inventaris:</b> ${item["NO INVENTARIS"] || "-"}</p>
                 <p><b>Nama Barang:</b> ${item["NAMA BARANG"] || "-"}</p>
-                <p><b>Merek / Tipe:</b> ${merkType}</p>
+                <p><b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}</p>
+                <p><b>OS:</b> ${item["OS"] || "-"}</p>
                 <p><b>Kondisi:</b> ${item["Kondisi"]}</p>
                 <p><b>Mouse:</b> ${item.Mouse}</p>
                 <p><b>Keyboard:</b> ${item.Keyboard}</p>
                 <p><b>Keterangan:</b> ${item.Keterangan || "-"}</p>
-
-                <div class="mt-6 bg-gray-100 p-4 rounded-xl">
-                    <h3 class="font-bold mb-2">Chart Merk</h3>
-                    <canvas id="chartMerk" width="300" height="200"></canvas>
-                </div>
             ` : `<p class='text-red-600 font-bold'>Tidak ada laptop di meja ini.</p>`}
 
         </div>
@@ -249,22 +219,6 @@ function showDetail(noMeja) {
 
     document.getElementById("modal").innerHTML = modalHTML;
     document.getElementById("modal").classList.remove("hidden");
-
-    if (item) {
-        setTimeout(() => loadMerkChart(merkType), 200);
-    }
-}
-
-function loadMerkChart(merk) {
-    new Chart(document.getElementById("chartMerk"), {
-        type: "pie",
-        data: {
-            labels: [merk],
-            datasets: [{
-                data: [1]
-            }]
-        }
-    });
 }
 
 function closeModal() {
