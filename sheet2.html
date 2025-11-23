@@ -1,136 +1,141 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Rekap Nilai Siswa</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aplikasi Sinkron Nilai</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    background: #f4f4f4;
-  }
-
-  h2 {
-    text-align: center;
-  }
-
+  body { font-family: Arial; background:#f3f6fa; padding:20px; }
   .container {
-    max-width: 900px;
-    margin: auto;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    background:white; padding:20px; border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,.1); max-width:1000px; margin:auto;
   }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-  }
-
-  table th, table td {
-    border: 1px solid #ddd;
-    padding: 10px;
-    text-align: left;
-  }
-
-  table th {
-    background: #007bff;
-    color: white;
-  }
-
+  table { width:100%; border-collapse:collapse; margin-top:15px; }
+  table th, table td { border:1px solid #ccc; padding:8px; }
+  table th { background:#007bff; color:white; }
   .btn {
-    padding: 10px 15px;
-    margin-top: 15px;
-    background: #28a745;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+    padding:10px 15px; background:#007bff; color:white;
+    border:none; border-radius:5px; cursor:pointer;
   }
-
-  .btn:hover {
-    background: #218838;
-  }
+  .box { padding:10px; background:#eef3ff; border-radius:8px; margin-bottom:15px; }
 </style>
-
 </head>
 <body>
 
 <div class="container">
-  <h2>Rekap Nilai Siswa</h2>
+  <h2>Sinkronisasi Nilai Siswa</h2>
 
-  <label>Pilih Sheet:</label>
-  <select id="sheetSelect">
-    <option value="FORM_NILAI">FORM_NILAI</option>
-    <option value="MAPEL_TIK">MAPEL_TIK</option>
-  </select>
+  <!-- INPUT SPREADSHEET -->
+  <div class="box">
+    <label><b>Spreadsheet ID</b></label><br>
+    <input id="sheetId" type="text" style="width:100%; padding:8px;"
+      placeholder="Masukkan Spreadsheet ID Google Sheet">
 
-  <button class="btn" onclick="loadData()">Muat Data</button>
+    <br><br>
 
-  <table id="tabelData">
+    <label><b>Nama Sheet (dengan range)</b></label><br>
+    <input id="sheetName" type="text" style="width:100%; padding:8px;"
+      value="Form Responses 1!A1:E300">
+
+    <br><br>
+
+    <button class="btn" onclick="loadData()">Load Data</button>
+    <div id="status" style="margin-top:10px; color:#444;"></div>
+  </div>
+
+  <!-- TABLE -->
+  <table id="resultTable">
     <thead>
       <tr>
-        <th>Timestamp</th>
         <th>Nama</th>
-        <th>Email</th>
         <th>Kelas</th>
-        <th>Nilai</th>
+        <th>Score 1</th>
+        <th>Score 2</th>
+        <th>Score 3</th>
+        <th>Score 4</th>
+        <th>Score 5</th>
+        <th>Score Akhir</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
-
-  <button class="btn" onclick="downloadExcel()">Download Excel</button>
-  <button class="btn" onclick="downloadPDF()">Download PDF</button>
-
 </div>
 
 <script>
-const URL_API = "PASTE_URL_WEBAPP_KAMU_DI_SINI";  // <--- WAJIB DIGANTI
+// MASUKKAN URL WEBAPP MILIKMU
+const API_URL = "https://script.google.com/macros/s/AKfycbyhIGJdsCj97KCosh64tDKXahyJU3Pxnj8xxhD2A9ColMYLAPKPuG0cMakodB8TQwsKOw/exec";
 
 async function loadData() {
-  const sheet = document.getElementById("sheetSelect").value;
-  const url = `${URL_API}?sheet=${sheet}`;
+  const id = document.getElementById("sheetId").value.trim();
+  const sheetRange = document.getElementById("sheetName").value.trim();
 
-  console.log("Memuat dari:", url);
-
-  const res = await fetch(url);
-  const json = await res.json();
-
-  console.log("Data diterima:", json);
-
-  const tbody = document.querySelector("#tabelData tbody");
-  tbody.innerHTML = "";
-
-  if (json.status !== "success") {
-    tbody.innerHTML = `<tr><td colspan='5'>Gagal memuat data: ${json.message}</td></tr>`;
+  if (!id || !sheetRange) {
+    alert("Isi Spreadsheet ID dan Nama Sheet!");
     return;
   }
 
-  json.data.forEach(row => {
-    let tr = `
+  const sheetOnly = sheetRange.includes("!")
+    ? sheetRange.split("!")[0]
+    : sheetRange;
+
+  document.getElementById("status").innerHTML = "Mengambil data...";
+
+  try {
+    const res = await fetch(`${API_URL}?id=${id}&sheet=${sheetOnly}`);
+    const json = await res.json();
+
+    if (json.status !== "success") {
+      document.getElementById("status").innerHTML = "❌ Error: " + json.message;
+      return;
+    }
+
+    document.getElementById("status").innerHTML = 
+      "✔ Data berhasil di-load: " + json.data.length + " baris";
+
+    renderTable(json.data);
+
+  } catch (err) {
+    document.getElementById("status").innerHTML = "❌ Gagal fetch: " + err;
+  }
+}
+
+
+function renderTable(data) {
+  const groups = {};
+
+  data.forEach(r => {
+    const nama = r.nama;
+    if (!groups[nama]) {
+      groups[nama] = {
+        nama: r.nama,
+        kelas: r.kelas,
+        scores: []
+      };
+    }
+    groups[nama].scores.push(Number(r.score));
+  });
+
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  Object.values(groups).forEach(item => {
+
+    const s = item.scores;
+    const row = `
       <tr>
-        <td>${row.timestamp || "-"}</td>
-        <td>${row.nama || "-"}</td>
-        <td>${row.email || "-"}</td>
-        <td>${row.kelas || "-"}</td>
-        <td>${row.nilai || "-"}</td>
+        <td>${item.nama}</td>
+        <td>${item.kelas}</td>
+        <td>${s[0] || ""}</td>
+        <td>${s[1] || ""}</td>
+        <td>${s[2] || ""}</td>
+        <td>${s[3] || ""}</td>
+        <td>${s[4] || ""}</td>
+        <td><b>${Math.max(...s)}</b></td>
       </tr>
     `;
-    tbody.innerHTML += tr;
+
+    tbody.innerHTML += row;
   });
-}
-
-function downloadExcel() {
-  alert("Fitur download Excel siap, tinggal dihubungkan ke backend.");
-}
-
-function downloadPDF() {
-  alert("Fitur PDF siap, tinggal backend.");
 }
 </script>
 
