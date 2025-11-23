@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mapping Siswa – Perbaikan</title>
+
+  <!-- libs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
+  <style>
+    body{font-family:Arial;margin:20px auto;max-width:1100px}
+    input,button{padding:8px;margin:6px 0;width:100%}
+    pre{background:#f5f5f5;padding:10px;border-radius:6px}
+    #nilaiOutput, #excelPreview{max-height:220px;overflow:auto;border:1px solid #ddd;padding:8px;background:#fff}
+  </style>
+</head>
+<body>
+
+<h2>Mapping Siswa – Versi Perbaikan</h2>
+
+<label>URL Web App (Apps Script)</label>
+<input id="api" placeholder="https://script.google.com/macros/s/XXXX/exec">
+
+<label>ID Spreadsheet Nilai</label>
+<input id="sheetId" placeholder="1AbC...">
+
+<label>Range (contoh: Form Responses 1!A1:Z)</label>
+<input id="range" placeholder="Sheet1!A1:Z">
+
+<button id="btnLoadNilai">Muat Nilai</button>
+<pre id="nilaiOutput">Belum memuat nilai.</pre>
+
+<hr>
+
+<label>Upload Excel Daftar Siswa (Kolom minimal: Nama | Kelas)</label>
+<input type="file" id="excelFile" accept=".xlsx,.xls">
+<button id="btnUploadExcel">Upload Excel</button>
+<div id="excelPreview"></div>
+
+<hr>
+<button id="btnMap">Proses Mapping</button>
+
+<table id="mappingTable" style="width:100%; margin-top:12px"></table>
+
+<hr>
+<button id="exportExcel">Export Hasil ke Excel</button>
+<button onclick="window.print()">Export PDF (Print)</button>
+
+<script>
+/* ---------- Utility ---------- */
+function normalizeName(s){
+  if(s === undefined || s === null) return "";
+  // remove diacritics, non-alnum except space, collapse spaces, trim, lower
+  try {
+    s = s.toString();
+    // remove accents
+    s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  } catch(e){}
+  s = s.replace(/[^0-9a-zA-Z\s]/g, " ");
+  s = s.replace(/\s+/g, " ").trim().toLowerCase();
+  return s;
+}
+
+function showError(msg){
+  document.getElementById('nilaiOutput').textContent = "Error: " + msg;
+  console.error(msg);
+}
+
+/* ---------- State ---------- */
+let rawNilai = [];   // raw array of arrays from API
+let nilaiHeader = []; 
+let nilaiMap = new Map(); // normalizedName => rowArray (including header removed)
+let rawExcel = [];    // excel as array-of-arrays
+let mapped = [];      // hasil mapping array of objects
+
+/* ---------- Load nilai from Apps Script ---------- */
+document.getElementById('btnLoadNilai').addEventListener('click', async ()=>{
+  const api = document.getElementById('api').value.trim();
+  const sheetId = document.getElementById('sheetId').value.trim();
+  const range = document.getElementById('range').value.trim();
+
+  if(!api || !sheetId || !range) return alert("Isi API URL, sheetId, dan range.");
+
+  document.getElementById('nilaiOutput').textContent = "Memuat...";
+  try {
+    const resp = await fetch(`${api}?id=${encodeURIComponent(sheetId)}&range=${encodeURIComponent(range)}`);
+    const j = await resp.json();
+    // Apps Script variant: { success:true, data: [...] } or direct array
+    let data = null;
+    if (j === null) throw "Response is null";
+    if (Array.isArray(j)) data = j;
+    else if (j.data) data = j.data;
+    else if (j.values) data = j.values;
+    else {
+      // sometimes API returns object with success:false and error
+      if (j.success === false) throw (j.error || "Apps Script returned success:false");
+      // fallback try common properties
+      for(const k in j){
+        if(Array.isArray(j[k])){ data = j[k]; break; }
+      }
+    }
+    if(!data || !Array.isArray(data) || data.length===0) throw "Data kosong atau format tidak dikenali.";
+    // Ensure it's array of arrays. If it's array of objects, convert to array-of-arrays
+    if(typeof data[0] === 'object' && !Array.isArray(data[0])){
+      // array of objects => extract headers keys
+      const headers = Object.keys(data[0]);
+      const rows = data.map(r => headers.map(h => r[h]));
+      data = [headers].concat(rows);
+    }
+
+    rawNilai = data;
+    nilaiHeader = rawNilai[0].map(h => h? h.toString(): "");
+    // build map using first data column as name (index 0)
+    nilaiMap.clear();
+    for(let i=1;i<rawNilai.length;i++){
+      const row = rawNilai[i];
+      const namaCell = row[0];
+      const norm = normalizeName(namaCell);
+      if(!nilaiMap.has(norm)){
+        nilaiMap.set(norm, row);
+      } else {
+        // if duplicate names, store array of rows
+        const existing = nilaiMap.get(norm);
+        if(Array.isArray(existing)) existing.push(row);
+        else nilaiMap.set(norm, [existing,row]);
+      }
+    }
+    document.getElementById('nilaiOutput').textContent = "Data nilai ter-load. Header: " + JSON.stringify(nilaiHeader);
+    console.log("rawNilai", rawNilai);
+  } catch(err){
+    showError(err.toString());
+  }
+});
+
+/* ---------- Upload Excel ---------- */
+document.getElementById('btnUploadExcel').addEventListener('click', ()=>{
+  const f = document.getElementById('excelFile').files[0];
+  if(!f) return alert("Pilih file Excel dahulu.");
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const wb = XLSX.read(e.target.result, {type:'binary'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    // get as array of arrays
+    rawExcel = XLSX.utils.sheet_to_json(ws,{header:1, defval:""});
+    // preview
+    let html = '<table border="1" style="border-collapse:collapse;width:100%">';
+    rawExcel.forEach((r,ri) => {
+      html += '<tr>';
+      r.forEach(c => html += `<td style="padding:6px">${String(c)}</td>`);
+      html += '</tr>';
+    });
+    html += '</table>';
+    document.getElementById('excelPreview').innerHTML = html;
+  };
+  reader.readAsBinaryString(f);
+});
+
+/* ---------- Mapping ---------- */
+document.getElementById('btnMap').addEventListener('click', ()=>{
+  if(rawExcel.length<2) return alert("Upload Excel (minimal header+1 row)");
+  if(rawNilai.length<2) return alert("Load data nilai dari Sheets terlebih dahulu");
+  const headerExcel = rawExcel[0];
+  // assume Nama = col 0, Kelas = col 1 (if present)
+  const namaIdx = 0;
+  const kelasIdx = headerExcel.length>1 ? 1 : -1;
+
+  mapped = rawExcel.slice(1).map(r => {
+    const nama = r[namaIdx] || "";
+    const kelas = kelasIdx>=0 ? (r[kelasIdx] || "") : "";
+    const norm = normalizeName(nama);
+    const match = nilaiMap.get(norm);
+    let nilaiOut;
+    if(!match){
+      // attempt fuzzy: try contains
+      let found = null;
+      for(const [key,val] of nilaiMap.entries()){
+        if(key.includes(norm) || norm.includes(key) || key.split(' ').some(kp=> norm.includes(kp) && kp.length>2)){
+          found = val; break;
+        }
+      }
+      if(found) nilaiOut = found;
+      else nilaiOut = null;
+    } else nilaiOut = match;
+
+    // format nilaiOut as string
+    let nilaiStr;
+    if(!nilaiOut) nilaiStr = "Tidak ditemukan";
+    else if(Array.isArray(nilaiOut) && Array.isArray(nilaiOut[0])) nilaiStr = nilaiOut.map(rr => rr.slice(1).join(" | ")).join(" ; ");
+    else nilaiStr = (Array.isArray(nilaiOut) ? nilaiOut.slice(1).join(" | ") : String(nilaiOut));
+
+    return {
+      nama: nama,
+      kelas: kelas,
+      nilaiRaw: nilaiOut,
+      nilaiText: nilaiStr
+    };
+  });
+
+  renderDataTable();
+});
+
+/* ---------- Render DataTable ---------- */
+let dtInstance = null;
+function renderDataTable(){
+  const rows = mapped.map(r => [r.nama, r.kelas, r.nilaiText]);
+  if($.fn.DataTable.isDataTable('#mappingTable')){
+    $('#mappingTable').DataTable().clear().rows.add(rows).draw();
+  } else {
+    dtInstance = $('#mappingTable').DataTable({
+      data: rows,
+      columns: [{title:"Nama"}, {title:"Kelas"}, {title:"Nilai"}],
+      pageLength: 25
+    });
+  }
+}
+
+/* ---------- Export hasil ---------- */
+document.getElementById('exportExcel').addEventListener('click', ()=>{
+  if(!mapped || mapped.length===0) return alert("Belum ada data mapping.");
+  // convert to worksheet
+  const out = mapped.map(m => ({Nama:m.nama, Kelas:m.kelas, Nilai:m.nilaiText}));
+  const ws = XLSX.utils.json_to_sheet(out);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Mapping");
+  XLSX.writeFile(wb, "mapping_siswa.xlsx");
+});
+</script>
+
+</body>
+</html>
