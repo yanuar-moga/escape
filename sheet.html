@@ -86,7 +86,7 @@ async function loadSheet(){
 
   document.getElementById("loadStatus").innerHTML = "Memuat data...";
 
-  const url = `https://script.google.com/macros/s/AKfycb-your-webapp-id/exec?sheetId=${id}&sheetName=${name}`;
+  const url = `https://script.google.com/macros/s/AKfycbwCJw9TUnX_YbNkWMqLZTsDwatTgUvM0mEGhBaQ09V8DPpoLtVPnovqFNT99lsjFqcu5w/exec?sheetId=${id}&sheetName=${name}`;
 
   try{
     const res = await fetch(url);
@@ -173,3 +173,4 @@ function exportExcel(){
 
 </body>
 </html>
+
