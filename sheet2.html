@@ -15,6 +15,8 @@ body { background: #f3f6fa; }
 .header-logo { height:50px; margin-right:15px; }
 .header-desc { font-size: 0.9rem; color:#555; }
 .header-version { font-size:0.85rem; color:#888; }
+.header-dev { font-size:0.85rem; color:#555; }
+.footer { text-align:center; margin-top:30px; font-size:0.85rem; color:#888; }
 </style>
 </head>
 <body class="p-4">
@@ -25,8 +27,9 @@ body { background: #f3f6fa; }
     <img src="assets/mb.png" class="header-logo" />
     <div>
       <h2 class="fw-bold mb-1">Aplikasi Sinkronisasi Nilai Siswa</h2>
-      <div class="header-desc">Dari nilai Google respons Form langsung ke rekap daftar nilai Excel</div>
-      <div class="header-version">Version 1.0 | Build 23 November 2025</div>
+      <div class="header-desc">Dari nilai Google Form respons langsung ke rekap daftar nilai Excel</div>
+      <div class="header-version">Version 1.2 | Build 23 November 2025</div>
+      <div class="header-dev">Developer: MB</div>
     </div>
   </div>
 
@@ -82,11 +85,16 @@ body { background: #f3f6fa; }
     </div>
   </div>
 
+  <!-- FOOTER -->
+  <div class="footer">
+    © 2025 MB All Rights Reserved
+  </div>
 </div>
 
 <script>
 let sheetData = [], excelData = [], mergedData = [];
 
+// LOAD DATA GOOGLE SHEET
 document.getElementById("btnLoad").onclick = async () => {
   const SCRIPT_URL = document.getElementById("scriptUrl").value.trim();
   const ssId = document.getElementById("sheetId").value.trim();
@@ -130,7 +138,7 @@ document.getElementById("excelInput").addEventListener("change", function(e){
   reader.readAsBinaryString(file);
 });
 
-// SYNC
+// SYNC DATA
 document.getElementById("btnSync").onclick = () => {
   const kkm = Number(document.getElementById("kkm").value);
   mergedData = [];
@@ -142,7 +150,12 @@ document.getElementById("btnSync").onclick = () => {
     const attempts = sheetData.filter(s => s.nama?.toString().trim().toLowerCase()===namaExcel);
     const scores = attempts.map(a=>Number(a.score)).slice(0,5);
     while(scores.length<5) scores.push("");
-    const maxScore = Math.max(...scores.filter(n=>n!==""));
+
+    // Aturan Nilai Akhir: jika ada percobaan > KKM selain score1, nilai akhir = KKM
+    const overKKM = scores.slice(1).some(n=>n!=="" && n>kkm);
+    let scoreAkhir = Math.max(...scores.filter(n=>n!==""));
+    if(overKKM) scoreAkhir = kkm;
+
     mergedData.push({
       no: row[0],
       nama: row[1],
@@ -152,14 +165,14 @@ document.getElementById("btnSync").onclick = () => {
       score3: scores[2]||"",
       score4: scores[3]||"",
       score5: scores[4]||"",
-      scoreAkhir: isFinite(maxScore)?maxScore:""
+      scoreAkhir: isFinite(scoreAkhir)?scoreAkhir:""
     });
   });
 
   displayTable(kkm);
 };
 
-// DISPLAY
+// DISPLAY TABLE
 function displayTable(kkm){
   document.getElementById("resultSection").style.display="block";
   let html=`<tr class='table-primary'>
@@ -183,7 +196,7 @@ function displayTable(kkm){
   document.getElementById("syncStatus").innerHTML = `<span class="text-success">Sinkronisasi selesai!</span>`;
 }
 
-// DOWNLOAD
+// DOWNLOAD EXCEL
 document.getElementById("btnDownload").onclick = ()=>{
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(mergedData);
@@ -194,5 +207,3 @@ document.getElementById("btnDownload").onclick = ()=>{
 
 </body>
 </html>
-
-
