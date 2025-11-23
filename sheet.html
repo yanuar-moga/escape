@@ -1,454 +1,175 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Mapping Nilai — Step by Step</title>
-
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- XLSX / FileSaver -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-  <style>
-    body { background:#f6f8fb; padding:20px; font-family:Arial,Helvetica,sans-serif; }
-    .not-found { background:#ffcccc!important; }
-    .similar { background:#fff1b8!important; }
-    pre { background:#fff; padding:12px; border-radius:6px; max-height:160px; overflow:auto; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aplikasi Mapping Nilai Siswa</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { background: #f3f6ff; }
+.card { border-radius: 18px; }
+</style>
 </head>
-<body>
-  <div class="container">
-    <h2 class="mb-4 text-primary">Aplikasi Mapping Nilai — Step by Step</h2>
+<body class="p-4">
+<div class="container">
 
-    <!-- Step 1: Load Google Sheet -->
-    <div class="card mb-3 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">1) Load Data Google Sheet</h5>
-        <div class="row g-2">
-          <div class="col-md-8">
-            <label class="form-label">URL Web App (Apps Script)</label>
-            <input id="apiUrl" class="form-control" placeholder="https://script.google.com/macros/s/AKfycbwCJw9TUnX_YbNkWMqLZTsDwatTgUvM0mEGhBaQ09V8DPpoLtVPnovqFNT99lsjFqcu5w/exec">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Spreadsheet ID</label>
-            <input id="sheetId" class="form-control" placeholder="1AbC...">
-          </div>
-          <div class="col-md-6 mt-2">
-            <label class="form-label">Range (opsional)</label>
-            <input id="range" class="form-control" placeholder="Form Responses 1!A1:Z (atau biarkan kosong)">
-          </div>
-          <div class="col-md-6 d-flex align-items-end mt-2">
-            <button id="btnLoad" class="btn btn-primary w-100">Load Google Sheet</button>
-          </div>
-        </div>
+<h2 class="text-center fw-bold text-primary mb-4">Aplikasi Mapping Nilai Siswa</h2>
 
-        <div class="mt-3">
-          <small class="text-muted">Catatan: Apps Script Web App harus di-deploy dengan akses "Anyone".</small>
-          <div id="loadStatus" class="mt-2"><pre>Belum memuat data Google Sheet.</pre></div>
-        </div>
-      </div>
-    </div>
+<!-- STEP 1 LOAD SHEET -->
+<div class="card shadow-sm p-4 mb-4" id="step1">
+  <h4 class="fw-bold">1. Load Data Google Sheet</h4>
+  <label class="form-label mt-2">Spreadsheet ID</label>
+  <input id="sheetId" class="form-control" placeholder="Masukkan ID Spreadsheet">
 
-    <!-- Step 2: Upload Excel -->
-    <div class="card mb-3 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">2) Upload Excel Daftar Siswa</h5>
-        <div class="row g-2">
-          <div class="col-md-8">
-            <input id="fileExcel" type="file" accept=".xlsx,.xls" class="form-control">
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button id="btnUpload" class="btn btn-success w-100" disabled>Upload Excel</button>
-          </div>
-        </div>
+  <label class="form-label mt-3">Nama Sheet</label>
+  <input id="sheetName" class="form-control" value="Sheet1">
 
-        <div class="mt-3">
-          <div id="excelPreview" style="max-height:200px; overflow:auto; background:#fff; padding:10px; border-radius:6px">
-            <small class="text-muted">Preview akan muncul setelah upload.</small>
-          </div>
-        </div>
-      </div>
-    </div>
+  <button class="btn btn-primary mt-3" onclick="loadSheet()">Load Data</button>
 
-    <!-- Step 3: Synchronize -->
-    <div class="card mb-3 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">3) Synchronize (Isi Score ke Excel)</h5>
+  <div id="loadStatus" class="mt-3 text-secondary"></div>
+</div>
 
-        <div class="mb-2">
-          <small class="text-muted">Pengaturan kolom (sesuaikan bila berbeda):</small>
-        </div>
+<!-- STEP 2 UPLOAD EXCEL -->
+<div class="card shadow-sm p-4 mb-4 d-none" id="step2">
+  <h4 class="fw-bold">2. Upload Excel Daftar Siswa</h4>
+  <input type="file" id="excelInput" accept=".xlsx" class="form-control mt-2">
+</div>
 
-        <div class="row g-2 mb-2">
-          <div class="col-md-4">
-            <label class="form-label">Nama - di Excel (kolom, 0-based)</label>
-            <input id="colNamaExcel" class="form-control" value="1" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Kelas - di Excel (kolom, 0-based)</label>
-            <input id="colKelasExcel" class="form-control" value="2" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Score - di Excel (kolom target, 0-based)</label>
-            <input id="colScoreExcel" class="form-control" value="3" />
-          </div>
-        </div>
+<!-- STEP 3 SYNC -->
+<div class="card shadow-sm p-4 mb-4 d-none" id="step3">
+  <h4 class="fw-bold">3. Sinkronisasi Nilai</h4>
+  <button class="btn btn-success" onclick="syncData()">Synchronize</button>
+</div>
 
-        <div class="row g-2 mb-3">
-          <div class="col-md-4">
-            <label class="form-label">Nama - di Sheet (kolom index)</label>
-            <input id="colNamaSheet" class="form-control" value="2" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Score - di Sheet (kolom index)</label>
-            <input id="colScoreSheet" class="form-control" value="1" />
-          </div>
-          <div class="col-md-4 d-flex align-items-end">
-            <button id="btnSync" class="btn btn-warning w-100" disabled>Synchronize</button>
-          </div>
-        </div>
+<!-- STEP 4 DOWNLOAD -->
+<div class="card shadow-sm p-4 mb-4 d-none" id="step4">
+  <h4 class="fw-bold">4. Download Hasil</h4>
+  <button class="btn btn-outline-primary" onclick="exportExcel()">Download Excel</button>
+</div>
 
-        <div id="syncStatus"><small class="text-muted">Sinkron belum dijalankan.</small></div>
-      </div>
-    </div>
-
-    <!-- Step 4: Download -->
-    <div class="card mb-4 shadow-sm">
-      <div class="card-body d-flex gap-2">
-        <button id="btnDownload" class="btn btn-primary" disabled>Download Excel Hasil</button>
-        <button id="btnReset" class="btn btn-outline-secondary">Reset</button>
-      </div>
-    </div>
-
-    <!-- Hasil table -->
-    <div class="card mb-5 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">Preview Hasil Mapping</h5>
-        <div class="table-responsive">
-          <table id="tblResult" class="table table-sm table-bordered">
-            <thead class="table-light">
-              <tr><th>#</th><th>Nama (Excel)</th><th>Kelas (Excel)</th><th>Score (Sheet)</th><th>Status</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
+<!-- RESULT TABLE -->
+<div class="card shadow-sm p-4 mb-4 d-none" id="resultCard">
+  <h4 class="fw-bold">Hasil Mapping</h4>
+  <div class="table-responsive mt-3">
+    <table class="table table-bordered" id="resultTable">
+      <thead class="table-primary">
+        <tr>
+          <th>Nama</th>
+          <th>Kelas Excel</th>
+          <th>Kelas Google</th>
+          <th>Score</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
+</div>
+
+</div>
 
 <script>
-/* ---------------------------
-   Utility & State
-   --------------------------- */
+let rawNilai = [];
+let excelData = [];
+let mapped = [];
 
-let rawSheet = [];      // array-of-arrays from Apps Script
-let rawExcel = null;    // XLSX workbook sheet as array-of-arrays
-let excelSheetName = null;
-let excelWorksheet = null; // worksheet object for writing back
-let resultRows = [];    // mapped results
+// NORMALIZE NAMA
+function normalize(s){ return s.toLowerCase().replace(/\s+/g, "").trim(); }
 
-// Normalize name for comparison
-function normalizeName(s) {
-  if (s === undefined || s === null) return "";
-  s = String(s);
-  try { s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch(e){}
-  s = s.replace(/[^0-9a-zA-Z\s]/g, " ");
-  s = s.replace(/\s+/g, " ").trim().toLowerCase();
-  return s;
-}
+// LOAD GOOGLE SHEET
+async function loadSheet(){
+  const id = document.getElementById("sheetId").value.trim();
+  const name = document.getElementById("sheetName").value.trim();
 
-// Levenshtein distance (for fuzzy)
-function levenshtein(a,b){
-  if(!a) return b?b.length:0;
-  if(!b) return a.length;
-  const m = a.length, n = b.length;
-  const dp = Array(m+1).fill(null).map(()=>Array(n+1).fill(0));
-  for(let i=0;i<=m;i++) dp[i][0]=i;
-  for(let j=0;j<=n;j++) dp[0][j]=j;
-  for(let i=1;i<=m;i++){
-    for(let j=1;j<=n;j++){
-      dp[i][j] = Math.min(
-        dp[i-1][j]+1,
-        dp[i][j-1]+1,
-        dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
-      );
-    }
+  document.getElementById("loadStatus").innerHTML = "Memuat data...";
+
+  const url = `https://script.google.com/macros/s/AKfycb-your-webapp-id/exec?sheetId=${id}&sheetName=${name}`;
+
+  try{
+    const res = await fetch(url);
+    const json = await res.json();
+
+    if(json.status !== "success") throw "Gagal membaca sheet";
+
+    rawNilai = json.data;
+    document.getElementById("loadStatus").innerHTML = "✔ Data berhasil dimuat!";
+
+    document.getElementById("step2").classList.remove("d-none");
+
+  }catch(e){
+    document.getElementById("loadStatus").innerHTML = "❌ Gagal load: " + e;
   }
-  return dp[m][n];
 }
 
-/* ---------------------------
-   Step controls (enable/disable)
-   --------------------------- */
-const btnLoad = document.getElementById('btnLoad');
-const btnUpload = document.getElementById('btnUpload');
-const btnSync = document.getElementById('btnSync');
-const btnDownload = document.getElementById('btnDownload');
-const btnReset = document.getElementById('btnReset');
-
-function setUploadEnabled(v){
-  btnUpload.disabled = !v;
-}
-function setSyncEnabled(v){
-  btnSync.disabled = !v;
-}
-function setDownloadEnabled(v){
-  btnDownload.disabled = !v;
-}
-
-/* ---------------------------
-   Load Google Sheet (Step 1)
-   --------------------------- */
-btnLoad.addEventListener('click', async ()=>{
-  const api = document.getElementById('apiUrl').value.trim();
-  const sheetId = document.getElementById('sheetId').value.trim();
-  const range = document.getElementById('range').value.trim();
-
-  if(!api || !sheetId){
-    alert('Isi API URL dan Spreadsheet ID terlebih dahulu.');
-    return;
-  }
-
-  const url = api + '?id=' + encodeURIComponent(sheetId) + (range ? '&range=' + encodeURIComponent(range) : '');
-  document.getElementById('loadStatus').innerHTML = '<pre>Memuat data dari Google Sheet...</pre>';
-  try {
-    const resp = await fetch(url);
-    const j = await resp.json();
-    // Accept formats: array-of-arrays, or { success/data }, or array-of-objects
-    let data = null;
-    if(Array.isArray(j)) data = j;
-    else if(j.data && Array.isArray(j.data)) data = j.data;
-    else if(j.values && Array.isArray(j.values)) data = j.values;
-    else if(Array.isArray(j.result)) data = j.result;
-    else {
-      // try to find first array property
-      for(const k in j) if(Array.isArray(j[k])) { data = j[k]; break; }
-    }
-    if(!data || !Array.isArray(data) || data.length === 0){
-      throw new Error('Response format tidak dikenali atau data kosong.');
-    }
-
-    // Ensure array-of-arrays. If we got array-of-objects, convert:
-    if(typeof data[0] === 'object' && !Array.isArray(data[0])){
-      const headers = Object.keys(data[0]);
-      const rows = data.map(row => headers.map(h => row[h]));
-      data = [headers].concat(rows);
-    }
-
-    rawSheet = data;
-    document.getElementById('loadStatus').innerHTML = '<pre>Load sukses. Baris: ' + rawSheet.length + '</pre>';
-    setUploadEnabled(true);
-    // reset downstream
-    setSyncEnabled(false);
-    setDownloadEnabled(false);
-    resultRows = [];
-    renderResultTable();
-  } catch(err){
-    document.getElementById('loadStatus').innerHTML = '<pre style="color:red">Gagal load: '+String(err)+'</pre>';
-    setUploadEnabled(false);
-    setSyncEnabled(false);
-    setDownloadEnabled(false);
-    rawSheet = [];
-  }
-});
-
-/* ---------------------------
-   Upload Excel (Step 2)
-   --------------------------- */
-document.getElementById('fileExcel').addEventListener('change', (e)=>{
-  // enable button once file selected
-  setUploadEnabled(e.target.files && e.target.files.length>0 && rawSheet.length>0);
-});
-
-btnUpload.addEventListener('click', ()=>{
-  const f = document.getElementById('fileExcel').files[0];
-  if(!f){ alert('Pilih file Excel terlebih dahulu.'); return; }
-  if(rawSheet.length === 0){ alert('Silakan Load Google Sheet terlebih dahulu.'); return; }
-
+// UPLOAD EXCEL
+excelInput.addEventListener("change", function(){
   const reader = new FileReader();
-  reader.onload = function(ev){
-    const wb = XLSX.read(ev.target.result, {type:'binary'});
-    excelSheetName = wb.SheetNames[0];
-    excelWorksheet = wb.Sheets[excelSheetName];
-    // store workbook for later write
-    // convert to array-of-arrays with header
-    rawExcel = XLSX.utils.sheet_to_json(excelWorksheet, {header:1, defval:""});
-    // preview (first 10 rows)
-    let html = '<table class="table table-sm"><thead><tr>';
-    const header = rawExcel[0] || [];
-    for(let c=0;c<header.length;c++) html += '<th>'+ (header[c]||'') +'</th>';
-    html += '</tr></thead><tbody>';
-    rawExcel.slice(1, 21).forEach((r,i) => {
-      html += '<tr>';
-      for(let c=0;c<(header.length);c++) html += '<td>' + (r[c]||'') + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    document.getElementById('excelPreview').innerHTML = html;
-
-    // enable sync button
-    setSyncEnabled(true);
-    setDownloadEnabled(false);
-    resultRows = [];
-    renderResultTable();
+  reader.onload = function(e){
+    const wb = XLSX.read(e.target.result, {type:"binary"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    excelData = XLSX.utils.sheet_to_json(ws, {header:1});
+    document.getElementById("step3").classList.remove("d-none");
   };
-  reader.readAsBinaryString(f);
+  reader.readAsBinaryString(this.files[0]);
 });
 
-/* ---------------------------
-   Synchronize (Step 3)
-   --------------------------- */
-btnSync.addEventListener('click', ()=>{
-  if(!rawExcel || rawExcel.length < 1){ alert('Excel belum di-upload.'); return; }
-  if(!rawSheet || rawSheet.length < 2){ alert('Google Sheet belum ter-load.'); return; }
+// SYNC MAPPING
+function syncData(){
+  const out = [];
 
-  // get column index settings (user can change)
-  const colNamaExcel = parseInt(document.getElementById('colNamaExcel').value,10);
-  const colKelasExcel = parseInt(document.getElementById('colKelasExcel').value,10);
-  const colScoreExcel = parseInt(document.getElementById('colScoreExcel').value,10);
-  const colNamaSheet = parseInt(document.getElementById('colNamaSheet').value,10);
-  const colScoreSheet = parseInt(document.getElementById('colScoreSheet').value,10);
+  const nilaiMap = new Map();
+  for(let i=1;i<rawNilai.length;i++){
+    const row = rawNilai[i];
+    const nama = normalize(row[2]);
+    nilaiMap.set(nama, {score: row[1], kelas: row[4]});
+  }
 
-  // build lookup map from sheet (normalized name -> score)
-  const lookup = new Map();
-  for(let i=1;i<rawSheet.length;i++){
-    const row = rawSheet[i];
-    const nameCell = row[colNamaSheet];
-    const scoreCell = row[colScoreSheet];
-    const n = normalizeName(nameCell);
-    if(n) {
-      if(!lookup.has(n)) lookup.set(n, []);
-      lookup.get(n).push(scoreCell);
+  for(let j=1;j<excelData.length;j++){
+    const r = excelData[j];
+    const nama = r[1];
+    const kelasExcel = r[2];
+    const key = normalize(nama);
+    let status = "Match";
+
+    if(nilaiMap.has(key)){
+      const obj = nilaiMap.get(key);
+      out.push([nama, kelasExcel, obj.kelas, obj.score, "✔ Cocok"]);
+    }else{
+      out.push([nama, kelasExcel, "-", "-", "❌ Tidak ditemukan"]);
     }
   }
 
-  // process excel rows and write score into rawExcel (in memory)
-  resultRows = []; // hold preview result
-  for(let r=1; r<rawExcel.length; r++){
-    const row = rawExcel[r];
-    const namaExcel = (row[colNamaExcel] === undefined)? '': row[colNamaExcel];
-    const kelasExcel = (row[colKelasExcel] === undefined)? '': row[colKelasExcel];
-    const norm = normalizeName(namaExcel);
-    let status = 'OK';
-    let matchedScore = null;
+  mapped = out;
+  renderTable();
+  document.getElementById("step4").classList.remove("d-none");
+  document.getElementById("resultCard").classList.remove("d-none");
+}
 
-    if(lookup.has(norm)){
-      // exact match
-      const arr = lookup.get(norm);
-      matchedScore = arr[0]; // if multiple, take first
-      status = 'Ditemukan';
-    } else {
-      // fuzzy search: find best candidate with small distance
-      let best = {dist: 999, score: null, name: null};
-      for(const [nameKey, scores] of lookup.entries()){
-        const d = levenshtein(norm, nameKey);
-        if(d < best.dist){
-          best.dist = d;
-          best.score = scores[0];
-          best.name = nameKey;
-        }
-      }
-      if(best.dist <= 2 && best.score !== null){
-        matchedScore = best.score;
-        status = 'Mirip (autofill)';
-      } else {
-        status = 'Tidak ditemukan';
-      }
-    }
+// RENDER TABEL
+function renderTable(){
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
 
-    // write matchedScore into rawExcel row at target col
-    // ensure row has enough length
-    while(row.length <= colScoreExcel) row.push('');
-    row[colScoreExcel] = matchedScore !== null ? matchedScore : '';
-
-    // push preview
-    resultRows.push({
-      i: r,
-      nama: namaExcel,
-      kelas: kelasExcel,
-      score: matchedScore !== null ? matchedScore : '',
-      status
-    });
-  }
-
-  // Update preview table & enable download
-  renderResultTable();
-  document.getElementById('syncStatus').innerText = 'Sinkron selesai. Periksa hasil tabel. Jika cocok, klik Download Excel.';
-  setDownloadEnabled(true);
-});
-
-/* ---------------------------
-   Render preview/result table
-   --------------------------- */
-function renderResultTable(){
-  const tbody = document.querySelector('#tblResult tbody');
-  tbody.innerHTML = '';
-  if(resultRows.length === 0){
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada hasil.</td></tr>';
-    return;
-  }
-  resultRows.forEach((r, idx) => {
-    const tr = document.createElement('tr');
-    if(r.status === 'Tidak ditemukan') tr.classList.add('not-found');
-    if(r.status.startsWith('Mirip')) tr.classList.add('similar');
-    tr.innerHTML = `<td>${idx+1}</td>
-                    <td>${r.nama}</td>
-                    <td>${r.kelas}</td>
-                    <td>${r.score}</td>
-                    <td>${r.status}</td>`;
+  mapped.forEach(r=>{
+    const tr = document.createElement("tr");
+    if(r[4].includes("❌")) tr.classList.add("table-danger");
+    tr.innerHTML = `<td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>`;
     tbody.appendChild(tr);
   });
 }
 
-/* ---------------------------
-   Download Excel Hasil (Step 4)
-   --------------------------- */
-btnDownload.addEventListener('click', ()=>{
-  if(!rawExcel || rawExcel.length === 0){ alert('Tidak ada data Excel untuk diunduh.'); return; }
-
-  // Build new workbook from rawExcel (array-of-arrays)
-  const ws = XLSX.utils.aoa_to_sheet(rawExcel);
+// DOWNLOAD EXCEL
+function exportExcel(){
+  const ws = XLSX.utils.aoa_to_sheet([["Nama","Kelas Excel","Kelas Google","Score","Status"], ...mapped]);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, excelSheetName || 'Sheet1');
-
-  XLSX.writeFile(wb, 'hasil_mapping.xlsx');
-});
-
-/* ---------------------------
-   Reset button
-   --------------------------- */
-btnReset.addEventListener('click', ()=>{
-  rawSheet = [];
-  rawExcel = null;
-  resultRows = [];
-  excelWorksheet = null;
-  excelSheetName = null;
-
-  document.getElementById('apiUrl').value = '';
-  document.getElementById('sheetId').value = '';
-  document.getElementById('range').value = '';
-  document.getElementById('fileExcel').value = '';
-  document.getElementById('excelPreview').innerHTML = '<small class="text-muted">Preview akan muncul setelah upload.</small>';
-  document.getElementById('loadStatus').innerHTML = '<pre>Belum memuat data Google Sheet.</pre>';
-  document.getElementById('syncStatus').innerHTML = '<small class="text-muted">Sinkron belum dijalankan.</small>';
-  renderResultTable();
-  setUploadEnabled(false);
-  setSyncEnabled(false);
-  setDownloadEnabled(false);
-});
-
-/* ---------------------------
-   Initial state
-   --------------------------- */
-setUploadEnabled(false);
-setSyncEnabled(false);
-setDownloadEnabled(false);
-renderResultTable();
+  XLSX.utils.book_append_sheet(wb, ws, "Hasil");
+  XLSX.writeFile(wb, "mapping_nilai.xlsx");
+}
 
 </script>
+
 </body>
 </html>
-
