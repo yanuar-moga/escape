@@ -6,7 +6,7 @@
     <title>Aplikasi Sinkronisasi Nilai</title>
 
     <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/bootstrap.min.css" rel="stylesheet" />
 
     <!-- SheetJS -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -14,6 +14,7 @@
     <style>
         body { background: #f3f6fa; }
         .step-box { border-left: 5px solid #0d6efd; padding-left: 15px; }
+        .input-group-text { min-width: 140px; }
     </style>
 </head>
 <body class="p-4">
@@ -21,24 +22,22 @@
 <div class="container">
     <h2 class="mb-4 fw-bold">Aplikasi Sinkronisasi Nilai Siswa</h2>
 
-    <!-- NEW STEP 0: INPUT SHEET ID + RANGE -->
+    <!-- INPUT API -->
     <div class="card shadow-sm mb-4">
         <div class="card-body step-box">
-            <h5 class="card-title">0. Pengaturan Google Sheet</h5>
+            <h5 class="card-title">0. Konfigurasi Data</h5>
 
-            <label class="fw-bold mt-2">Google Sheet ID:</label>
-            <input id="sheetIdInput" class="form-control" placeholder="Masukkan Google Sheet ID">
+            <div class="input-group mb-3">
+                <span class="input-group-text">Sheet ID</span>
+                <input type="text" id="sheetId" class="form-control" placeholder="Masukkan Google Sheet ID">
+            </div>
 
-            <label class="fw-bold mt-3">Nama Sheet + Range Data:</label>
-            <input id="sheetRangeInput" class="form-control" value="Form Responses 1!A1:E350">
-        </div>
-    </div>
+            <div class="input-group mb-3">
+                <span class="input-group-text">Nama Sheet</span>
+                <input type="text" id="sheetName" class="form-control" value="Form Responses 1">
+            </div>
 
-    <!-- STEP 1: LOAD GOOGLE SHEET -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body step-box">
-            <h5 class="card-title">1. Load Data dari Google Sheet</h5>
-            <button id="btnLoadSheet" class="btn btn-primary">Load Data</button>
+            <button id="btnLoadSheet" class="btn btn-primary w-100">Load Data Google Sheet</button>
             <div id="loadStatus" class="mt-3 text-secondary"></div>
         </div>
     </div>
@@ -73,56 +72,59 @@
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhIGJdsCj97KCosh64tDKXahyJU3Pxnj8xxhD2A9ColMYLAPKPuG0cMakodB8TQwsKOw/exec";
 
-let sheetData = [];
-let excelData = [];
-let mergedData = [];
-
-// ==================== STEP 1 - LOAD GOOGLE SHEET ====================
+// ============ LOAD GOOGLE SHEET ============
 document.getElementById("btnLoadSheet").onclick = async () => {
-    const sheetId = document.getElementById("sheetIdInput").value.trim();
-    const sheetRange = document.getElementById("sheetRangeInput").value.trim();
 
-    if (!sheetId) {
-        alert("Masukkan Google Sheet ID terlebih dahulu!");
+    const SHEET_ID = document.getElementById("sheetId").value.trim();
+    const SHEET_NAME = document.getElementById("sheetName").value.trim();
+
+    if (!SHEET_ID) {
+        alert("Masukkan Google Sheet ID!");
         return;
     }
+
+    const url = `https://script.google.com/macros/s/${SHEET_ID}/exec?sheet=${encodeURIComponent(SHEET_NAME)}`;
 
     document.getElementById("loadStatus").innerHTML = "Mengambil data dari Google Sheet…";
 
     try {
-        const res = await fetch(`${SCRIPT_URL}?id=${sheetId}&range=${encodeURIComponent(sheetRange)}`);
+        const res = await fetch(url);
         const json = await res.json();
 
-        sheetData = json.data || [];
+        if (!json.data) throw "Format data salah.";
 
-        sheetData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        sheetData = json.data;
 
-        document.getElementById("loadStatus").innerHTML = 
-            `<span class='text-success'>Berhasil load ${sheetData.length} data!</span>`;
+        console.log("SHEET DATA:", sheetData);
+
+        // Sort timestamp ASC
+        sheetData.sort((a, b) => new Date(a.timestamp || a[0]) - new Date(b.timestamp || b[0]));
+
+        document.getElementById("loadStatus").innerHTML =
+            `<span class='text-success'>Berhasil load ${sheetData.length} baris data!</span>`;
 
         document.getElementById("uploadSection").style.display = "block";
 
     } catch (err) {
-        document.getElementById("loadStatus").innerHTML = 
+        document.getElementById("loadStatus").innerHTML =
             `<span class='text-danger'>Gagal load: ${err}</span>`;
     }
 };
 
-// ==================== STEP 2 - UPLOAD EXCEL ====================
+// ============ UPLOAD EXCEL =============
 document.getElementById("excelInput").addEventListener("change", function (e) {
     const file = e.target.files[0];
     const reader = new FileReader();
 
     reader.onload = function (event) {
         const workbook = XLSX.read(event.target.result, { type: "binary" });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
         excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        document.getElementById("excelStatus").innerHTML = 
-            `<span class='text-success'>Excel berhasil dibaca (${excelData.length} baris)</span>`;
+        document.getElementById("excelStatus").innerHTML =
+            `<span class='text-success'>Excel dibaca (${excelData.length} baris)</span>`;
 
         document.getElementById("syncSection").style.display = "block";
     };
@@ -130,27 +132,31 @@ document.getElementById("excelInput").addEventListener("change", function (e) {
     reader.readAsBinaryString(file);
 });
 
-// ==================== STEP 3 - SYNC ====================
+// ============ SYNC NILAI ============
 document.getElementById("btnSync").onclick = () => {
-    document.getElementById("syncStatus").innerHTML = "Proses sinkronisasi…";
-
     mergedData = [];
+
     const excelRows = excelData.slice(1);
-    const sheetRows = sheetData;
 
     excelRows.forEach(row => {
+
         const namaExcel = row[1]?.toString().trim().toLowerCase();
         const kelasExcel = row[2];
 
-        const attempts = sheetRows.filter(
-            s => s.nama?.toString().trim().toLowerCase() === namaExcel
-        );
+        const attempts = sheetData.filter(s => {
+            const namaSheet = (
+                s.nama || s.Nama || s[1] || ""
+            ).toString().trim().toLowerCase();
+            return namaSheet === namaExcel;
+        });
 
-        const scores = attempts.map(a => Number(a.nilai)).slice(0, 5);
+        const scores = attempts.map(a => {
+            return Number(a.nilai || a.Score || a[3] || "");
+        }).slice(0, 5);
 
         while (scores.length < 5) scores.push("");
 
-        const scoreAkhir = Math.max(...scores.filter(n => n !== ""));
+        const scoreAkhir = Math.max(...scores.filter(n => n !== "" && !isNaN(n)));
 
         mergedData.push({
             no: row[0],
@@ -161,15 +167,17 @@ document.getElementById("btnSync").onclick = () => {
             score3: scores[2] || "",
             score4: scores[3] || "",
             score5: scores[4] || "",
-            scoreAkhir: isFinite(scoreAkhir) ? scoreAkhir : ""
+            scoreAkhir: scoreAkhir > 0 ? scoreAkhir : ""
         });
+
     });
 
     displayTable();
 };
 
-// ==================== DISPLAY TABLE ====================
+// ============ TAMPILKAN TABEL ============
 function displayTable() {
+
     document.getElementById("resultSection").style.display = "block";
 
     let html = `
@@ -197,7 +205,7 @@ function displayTable() {
             <td>${r.score3}</td>
             <td>${r.score4}</td>
             <td>${r.score5}</td>
-            <td class='fw-bold text-success'>${r.scoreAkhir}</td>
+            <td class="fw-bold text-success">${r.scoreAkhir}</td>
         </tr>`;
     });
 
@@ -205,13 +213,14 @@ function displayTable() {
     document.getElementById("syncStatus").innerHTML = "Sinkronisasi selesai!";
 }
 
-// ==================== DOWNLOAD EXCEL ====================
+// ============ DOWNLOAD EXCEL ============
 document.getElementById("btnDownload").onclick = () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(mergedData);
     XLSX.utils.book_append_sheet(wb, ws, "Hasil Sinkron");
     XLSX.writeFile(wb, "hasil_sinkron.xlsx");
 };
+
 </script>
 
 </body>
