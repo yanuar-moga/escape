@@ -3,142 +3,178 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Aplikasi Sinkron Nilai</title>
+<title>Sinkronisasi Nilai Siswa</title>
 <style>
-  body { font-family: Arial; background:#f3f6fa; padding:20px; }
-  .container {
-    background:white; padding:20px; border-radius:10px;
-    box-shadow:0 0 10px rgba(0,0,0,.1); max-width:1000px; margin:auto;
-  }
-  table { width:100%; border-collapse:collapse; margin-top:15px; }
-  table th, table td { border:1px solid #ccc; padding:8px; }
-  table th { background:#007bff; color:white; }
-  .btn {
-    padding:10px 15px; background:#007bff; color:white;
-    border:none; border-radius:5px; cursor:pointer;
-  }
-  .box { padding:10px; background:#eef3ff; border-radius:8px; margin-bottom:15px; }
+body { font-family: Arial; background:#f3f6fa; padding:20px; }
+.container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+.card { padding:15px; border-radius:8px; background:#eef3ff; margin-bottom:15px; }
+input { padding:6px; margin:5px 0; width:100%; max-width:400px; }
+button { padding:8px 15px; background:#007bff; border:none; color:white; border-radius:5px; cursor:pointer; margin-top:5px; }
+table { width:100%; border-collapse:collapse; margin-top:15px; }
+th, td { border:1px solid #ccc; padding:8px; text-align:center; }
+th { background:#007bff; color:white; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-
 <div class="container">
-  <h2>Sinkronisasi Nilai Siswa</h2>
+<h2>Sinkronisasi Nilai Siswa</h2>
 
-  <!-- INPUT SPREADSHEET -->
-  <div class="box">
-    <label><b>Spreadsheet ID</b></label><br>
-    <input id="sheetId" type="text" style="width:100%; padding:8px;"
-      placeholder="Masukkan Spreadsheet ID Google Sheet">
+<div class="card">
+  <h4>Input Data</h4>
+  <label>Script URL WebApp:</label><br>
+  <input id="scriptUrl" placeholder="Masukkan URL Script WebApp"><br>
+  <label>Spreadsheet ID:</label><br>
+  <input id="sheetId" placeholder="Masukkan Spreadsheet ID"><br>
+  <label>Nama Sheet (Range):</label><br>
+  <input id="sheetName" value="Form Responses 1!A1:E400"><br>
+  <label>KKM:</label><br>
+  <input id="kkm" type="number" value="75"><br>
+  <button onclick="loadData()">Load Data</button>
+  <div id="status"></div>
+</div>
 
-    <br><br>
+<div class="card" id="uploadCard" style="display:none;">
+  <h4>Upload Data Siswa Excel</h4>
+  <input type="file" id="excelInput" accept=".xlsx,.xls">
+  <div id="excelStatus"></div>
+</div>
 
-    <label><b>Nama Sheet (dengan range)</b></label><br>
-    <input id="sheetName" type="text" style="width:100%; padding:8px;"
-      value="Form Responses 1!A1:E300">
+<div class="card" id="syncCard" style="display:none;">
+  <button onclick="syncData()">Sync Data</button>
+  <button onclick="downloadExcel()">Download Excel</button>
+</div>
 
-    <br><br>
-
-    <button class="btn" onclick="loadData()">Load Data</button>
-    <div id="status" style="margin-top:10px; color:#444;"></div>
-  </div>
-
-  <!-- TABLE -->
-  <table id="resultTable">
-    <thead>
-      <tr>
-        <th>Nama</th>
-        <th>Kelas</th>
-        <th>Score 1</th>
-        <th>Score 2</th>
-        <th>Score 3</th>
-        <th>Score 4</th>
-        <th>Score 5</th>
-        <th>Score Akhir</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<table id="resultTable">
+  <thead>
+    <tr>
+      <th>Nama</th>
+      <th>Kelas</th>
+      <th>Score1</th>
+      <th>Score2</th>
+      <th>Score3</th>
+      <th>Score4</th>
+      <th>Score5</th>
+      <th>Nilai Akhir</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 </div>
 
 <script>
-// MASUKKAN URL WEBAPP MILIKMU
-const API_URL = "https://script.google.com/macros/s/AKfycbzLxDHsf-o8cWANzn898trxnMFgyccyr1aJXkVcTto0v7GbeJm-1H7WkPC-hV5iqhwwrA/exec";
+let sheetData = [];
+let excelData = [];
+let mergedData = [];
 
-async function loadData() {
-  const id = document.getElementById("sheetId").value.trim();
-  const sheetRange = document.getElementById("sheetName").value.trim();
+// ================= LOAD DATA DARI GOOGLE SHEET =================
+function loadData(){
+  const url = document.getElementById("scriptUrl").value.trim();
+  const ssid = document.getElementById("sheetId").value.trim();
+  const sheetName = document.getElementById("sheetName").value.trim();
+  const status = document.getElementById("status");
 
-  if (!id || !sheetRange) {
-    alert("Isi Spreadsheet ID dan Nama Sheet!");
+  if(!url || !ssid || !sheetName){
+    alert("Isi semua field!");
     return;
   }
 
-  const sheetOnly = sheetRange.includes("!")
-    ? sheetRange.split("!")[0]
-    : sheetRange;
-
-  document.getElementById("status").innerHTML = "Mengambil data...";
-
-  try {
-    const res = await fetch(`${API_URL}?id=${id}&sheet=${sheetOnly}`);
-    const json = await res.json();
-
-    if (json.status !== "success") {
-      document.getElementById("status").innerHTML = "❌ Error: " + json.message;
+  status.innerHTML = "Loading data...";
+  fetch(`${url}?id=${ssid}&sheet=${encodeURIComponent(sheetName)}`)
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.status!=="success"){
+      status.innerHTML = "Error: "+res.message;
       return;
     }
-
-    document.getElementById("status").innerHTML = 
-      "✔ Data berhasil di-load: " + json.data.length + " baris";
-
-    renderTable(json.data);
-
-  } catch (err) {
-    document.getElementById("status").innerHTML = "❌ Gagal fetch: " + err;
-  }
+    sheetData = res.data.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    status.innerHTML = "Data berhasil dimuat: "+sheetData.length+" baris";
+    document.getElementById("uploadCard").style.display="block";
+    document.getElementById("syncCard").style.display="block";
+  })
+  .catch(err=>{
+    status.innerHTML = "Gagal fetch: "+err;
+  });
 }
 
+// ================= UPLOAD EXCEL =================
+document.getElementById("excelInput").addEventListener("change", function(e){
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const wb = XLSX.read(ev.target.result, {type:"binary"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    excelData = XLSX.utils.sheet_to_json(ws,{header:1});
+    document.getElementById("excelStatus").innerHTML = "Excel berhasil dibaca: "+excelData.length+" baris";
+  }
+  reader.readAsBinaryString(file);
+});
 
-function renderTable(data) {
-  const groups = {};
+// ================= SYNC DATA =================
+function syncData(){
+  const kkm = Number(document.getElementById("kkm").value);
+  mergedData = [];
 
-  data.forEach(r => {
-    const nama = r.nama;
-    if (!groups[nama]) {
-      groups[nama] = {
-        nama: r.nama,
-        kelas: r.kelas,
-        scores: []
-      };
-    }
-    groups[nama].scores.push(Number(r.score));
+  const students = excelData.length>0 ? excelData.slice(1) : sheetData.map((s,i)=>[i+1,s.nama,s.kelas]);
+
+  students.forEach((row,i)=>{
+    const nama = row[1]?.toString().trim().toLowerCase();
+    const kelas = row[2] || "";
+    const attempts = sheetData.filter(s=>s.nama.toString().trim().toLowerCase()===nama)
+                              .map(s=>Number(s.score)).slice(0,5);
+    while(attempts.length<5) attempts.push("");
+    const nilaiAkhir = Math.max(...attempts.filter(n=>n!==""));
+    mergedData.push({nama, kelas, scores: attempts, nilaiAkhir});
   });
+  renderTable(kkm);
+}
 
+// ================= RENDER TABEL =================
+function renderTable(kkm){
   const tbody = document.querySelector("#resultTable tbody");
-  tbody.innerHTML = "";
-
-  Object.values(groups).forEach(item => {
-
-    const s = item.scores;
-    const row = `
-      <tr>
-        <td>${item.nama}</td>
-        <td>${item.kelas}</td>
-        <td>${s[0] || ""}</td>
-        <td>${s[1] || ""}</td>
-        <td>${s[2] || ""}</td>
-        <td>${s[3] || ""}</td>
-        <td>${s[4] || ""}</td>
-        <td><b>${Math.max(...s)}</b></td>
-      </tr>
+  tbody.innerHTML="";
+  mergedData.forEach(r=>{
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${r.nama}</td>
+      <td>${r.kelas}</td>
+      ${r.scores.map(s=>{
+        let color="";
+        if(s!==""){
+          if(s<kkm) color="#f28c8c";
+          else if(s==kkm) color="#fff38c";
+          else color="#8cf28c";
+        }
+        return `<td style="background:${color}">${s}</td>`;
+      }).join("")}
+      <td>${r.nilaiAkhir}</td>
     `;
-
-    tbody.innerHTML += row;
+    tbody.appendChild(row);
   });
+}
+
+// ================= DOWNLOAD EXCEL =================
+function downloadExcel(){
+  if(mergedData.length===0){
+    alert("Belum ada data untuk diunduh!");
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const wsData = mergedData.map(r=>({
+    Nama: r.nama,
+    Kelas: r.kelas,
+    Score1: r.scores[0],
+    Score2: r.scores[1],
+    Score3: r.scores[2],
+    Score4: r.scores[3],
+    Score5: r.scores[4],
+    NilaiAkhir: r.nilaiAkhir
+  }));
+  const ws = XLSX.utils.json_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, "Hasil Sinkronisasi");
+  XLSX.writeFile(wb, "hasil_sinkron.xlsx");
 }
 </script>
 
 </body>
 </html>
-
