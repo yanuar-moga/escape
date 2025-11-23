@@ -62,6 +62,7 @@
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhIGJdsCj97KCosh64tDKXahyJU3Pxnj8xxhD2A9ColMYLAPKPuG0cMakodB8TQwsKOw/exec";
+
 let sheetData = [];
 let excelData = [];
 let mergedData = [];
@@ -75,12 +76,18 @@ document.getElementById("btnLoadSheet").onclick = async () => {
         const json = await res.json();
 
         sheetData = json.data;
-        document.getElementById("loadStatus").innerHTML = `<span class='text-success'>Berhasil load ${sheetData.length} data!</span>`;
+
+        // Sort by timestamp ASC
+        sheetData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        document.getElementById("loadStatus").innerHTML = 
+            `<span class='text-success'>Berhasil load ${sheetData.length} data!</span>`;
 
         document.getElementById("uploadSection").style.display = "block";
 
     } catch (err) {
-        document.getElementById("loadStatus").innerHTML = `<span class='text-danger'>Gagal load: ${err}</span>`;
+        document.getElementById("loadStatus").innerHTML = 
+            `<span class='text-danger'>Gagal load: ${err}</span>`;
     }
 };
 
@@ -95,7 +102,8 @@ document.getElementById("excelInput").addEventListener("change", function (e) {
         const sheet = workbook.Sheets[sheetName];
         excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        document.getElementById("excelStatus").innerHTML = `<span class='text-success'>Excel berhasil dibaca (${excelData.length} baris)</span>`;
+        document.getElementById("excelStatus").innerHTML = 
+            `<span class='text-success'>Excel berhasil dibaca (${excelData.length} baris)</span>`;
 
         document.getElementById("syncSection").style.display = "block";
     };
@@ -108,21 +116,35 @@ document.getElementById("btnSync").onclick = () => {
     document.getElementById("syncStatus").innerHTML = "Proses sinkronisasi…";
 
     mergedData = [];
-
     const excelRows = excelData.slice(1);
     const sheetRows = sheetData;
 
     excelRows.forEach(row => {
         const namaExcel = row[1]?.toString().trim().toLowerCase();
-        const kelasExcel = row[2] || "";
+        const kelasExcel = row[2];
 
-        const match = sheetRows.find(s => s.nama.toString().trim().toLowerCase() === namaExcel);
+        // Ambil semua nilai siswa dari sheet (semua timestamp)
+        const attempts = sheetRows.filter(
+            s => s.nama.toString().trim().toLowerCase() === namaExcel
+        );
+
+        // Ambil max 5 attempt
+        const scores = attempts.map(a => Number(a.nilai)).slice(0, 5);
+
+        while (scores.length < 5) scores.push(""); // jika kurang dari 5
+
+        const scoreAkhir = Math.max(...scores.filter(n => n !== ""))
 
         mergedData.push({
             no: row[0],
             nama: row[1],
             kelas: kelasExcel,
-            score: match ? match.nilai : "Tidak Ada"
+            score1: scores[0] || "",
+            score2: scores[1] || "",
+            score3: scores[2] || "",
+            score4: scores[3] || "",
+            score5: scores[4] || "",
+            scoreAkhir: isFinite(scoreAkhir) ? scoreAkhir : ""
         });
     });
 
@@ -138,7 +160,12 @@ function displayTable() {
             <th>No</th>
             <th>Nama</th>
             <th>Kelas</th>
-            <th>Score</th>
+            <th>Score 1</th>
+            <th>Score 2</th>
+            <th>Score 3</th>
+            <th>Score 4</th>
+            <th>Score 5</th>
+            <th>Score Akhir</th>
         </tr>
     `;
 
@@ -148,7 +175,12 @@ function displayTable() {
             <td>${r.no}</td>
             <td>${r.nama}</td>
             <td>${r.kelas}</td>
-            <td>${r.score}</td>
+            <td>${r.score1}</td>
+            <td>${r.score2}</td>
+            <td>${r.score3}</td>
+            <td>${r.score4}</td>
+            <td>${r.score5}</td>
+            <td class='fw-bold text-success'>${r.scoreAkhir}</td>
         </tr>`;
     });
 
@@ -167,5 +199,3 @@ document.getElementById("btnDownload").onclick = () => {
 
 </body>
 </html>
-
-
