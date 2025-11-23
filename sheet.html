@@ -1,89 +1,136 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loader Data Google Sheet</title>
-
-  <style>
-    body {
-      font-family: Arial;
-      padding: 20px;
-      max-width: 700px;
-      margin: auto;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 5px 0 15px 0;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    pre {
-      background: #f5f5f5;
-      padding: 15px;
-      border-radius: 6px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      max-height: 450px;
-      overflow: auto;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aplikasi Mapping Siswa + Upload Excel + Nilai Google Sheet</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" />
+<style>
+  body { font-family: Arial; padding:20px; max-width:1100px; margin:auto; }
+  input, button { padding:8px; margin:6px 0; width:100%; }
+  table { width:100%; border-collapse: collapse; }
+  th, td { border:1px solid #ccc; padding:8px; }
+  #mappingTable { margin-top:20px; }
+</style>
 </head>
 <body>
 
-  <h2>Baca Data Google Sheet Tanpa API Key</h2>
+<h2>Aplikasi Mapping Data Siswa – Versi Lengkap</h2>
 
-  <label>URL Web App (Apps Script)</label>
-  <input id="api" placeholder="https://script.google.com/macros/s/XXXX/exec">
+<h3>1. Masukkan URL Web App</h3>
+<input id="api" placeholder="https://script.google.com/macros/s/.../exec" />
 
-  <label>ID Spreadsheet</label>
-  <input id="sheetId" placeholder="1AbCsEfGhijkLMNOP12345">
+<h3>2. Masukkan ID Spreadsheet Nilai & Range</h3>
+<input id="sheetId" placeholder="ID Spreadsheet" />
+<input id="range" placeholder="Sheet1!A1:Z" />
+<button onclick="loadNilai()">Muat Nilai</button>
 
-  <label>Range</label>
-  <input id="range" placeholder="Sheet1!A1:E">
+<pre id="nilaiOutput">Belum ada data...</pre>
+<hr>
 
-  <button onclick="loadData()">Muat Data</button>
+<h3>3. Upload Excel Daftar Siswa</h3>
+<input type="file" id="excelFile" accept=".xlsx,.xls" />
+<button onclick="uploadExcel()">Upload Excel</button>
+<div id="excelPreview"></div>
+<hr>
 
-  <h3>Hasil:</h3>
-  <pre id="output">Belum ada data.</pre>
+<h3>4. Mapping Otomatis Nama → Nilai</h3>
+<button onclick="doMapping()">Proses Mapping</button>
 
-  <script>
-    function loadData() {
-      const api = document.getElementById("api").value.trim();
-      const id = document.getElementById("sheetId").value.trim();
-      const range = document.getElementById("range").value.trim();
+<table id="mappingTable" class="display" style="width:100%"></table>
 
-      if (!api || !id || !range) {
-        alert("Semua isian wajib diisi.");
-        return;
-      }
+<hr>
+<h3>5. Export Hasil</h3>
+<button onclick="exportExcel()">Export ke Excel</button>
+<button onclick="window.print()">Export ke PDF (Print)</button>
 
-      const url = `${api}?id=${id}&range=${encodeURIComponent(range)}`;
+<script>
+let nilaiData = [];
+let excelData = [];
+let dataMapped = [];
 
-      document.getElementById("output").textContent = "Memuat data...";
+function loadNilai() {
+  const api = document.getElementById('api').value;
+  const sheetId = document.getElementById('sheetId').value;
+  const range = document.getElementById('range').value;
 
-      fetch(url)
-        .then(res => res.json())
-        .then(json => {
-          if (!json.success) {
-            document.getElementById("output").textContent =
-              "Error: " + json.error;
-            return;
-          }
+  document.getElementById('nilaiOutput').textContent = "Memuat...";
 
-          document.getElementById("output").textContent =
-            JSON.stringify(json.data, null, 2);
-        })
-        .catch(err => {
-          document.getElementById("output").textContent = "Fetch error: " + err;
-        });
+  fetch(`${api}?id=${sheetId}&range=${encodeURIComponent(range)}`)
+    .then(r => r.json())
+    .then(j => {
+      nilaiData = j.data;
+      document.getElementById('nilaiOutput').textContent = JSON.stringify(j.data, null, 2);
+    });
+}
+
+function uploadExcel() {
+  const file = document.getElementById('excelFile').files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, {type:'binary'});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    excelData = XLSX.utils.sheet_to_json(sheet, {header:1});
+
+    let html = `<table>`;
+    excelData.forEach(r => html += `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`);
+    html += `</table>`;
+
+    document.getElementById('excelPreview').innerHTML = html;
+  }
+  reader.readAsBinaryString(file);
+}
+
+function doMapping() {
+  const excelRows = excelData.slice(1);
+  const nilaiRows = nilaiData.slice(1);
+
+  dataMapped = excelRows.map(row => {
+    const nama = row[0]?.toString().trim().toLowerCase();
+    const kelas = row[1] || "";
+
+    const match = nilaiRows.find(n => n[0]?.toString().trim().toLowerCase() === nama);
+
+    return {
+      nama: row[0],
+      kelas,
+      nilai: match ? match.slice(1) : ["Tidak ditemukan"]
+    };
+  });
+
+  renderTable();
+}
+
+function renderTable() {
+  const tableData = dataMapped.map(r => [r.nama, r.kelas, r.nilai.join(', ')]);
+
+  $(document).ready(() => {
+    if ($.fn.DataTable.isDataTable('#mappingTable')) {
+      $('#mappingTable').DataTable().clear().destroy();
     }
-  </script>
+
+    $('#mappingTable').DataTable({
+      data: tableData,
+      columns: [
+        { title: "Nama" },
+        { title: "Kelas" },
+        { title: "Nilai" }
+      ]
+    });
+  });
+}
+
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(dataMapped);
+  XLSX.utils.book_append_sheet(wb, ws, "Mapping");
+  XLSX.writeFile(wb, "mapping_siswa.xlsx");
+}
+</script>
 
 </body>
 </html>
