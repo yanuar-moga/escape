@@ -1,324 +1,453 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Aplikasi Mapping Nilai Siswa</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mapping Nilai — Step by Step</title>
 
-<!-- XLSX -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<!-- FileSaver untuk export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <!-- XLSX / FileSaver -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body { font-family: Arial; padding: 20px; }
-input, button, select { padding: 8px; margin: 4px; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-th, td { border: 1px solid #ccc; padding: 8px; }
-tr.not-found { background: #ffb3b3; }
-tr.similar { background: #ffe8a6; }
-</style>
+  <style>
+    body { background:#f6f8fb; padding:20px; font-family:Arial,Helvetica,sans-serif; }
+    .not-found { background:#ffcccc!important; }
+    .similar { background:#fff1b8!important; }
+    pre { background:#fff; padding:12px; border-radius:6px; max-height:160px; overflow:auto; }
+  </style>
 </head>
-
 <body>
+  <div class="container">
+    <h2 class="mb-4 text-primary">Aplikasi Mapping Nilai — Step by Step</h2>
 
-<h2>APLIKASI PEMETAAN NILAI GOOGLE SHEET + EXCEL</h2>
+    <!-- Step 1: Load Google Sheet -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">1) Load Data Google Sheet</h5>
+        <div class="row g-2">
+          <div class="col-md-8">
+            <label class="form-label">URL Web App (Apps Script)</label>
+            <input id="apiUrl" class="form-control" placeholder="https://script.google.com/macros/s/AKfy.../exec">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Spreadsheet ID</label>
+            <input id="sheetId" class="form-control" placeholder="1AbC...">
+          </div>
+          <div class="col-md-6 mt-2">
+            <label class="form-label">Range (opsional)</label>
+            <input id="range" class="form-control" placeholder="Form Responses 1!A1:Z (atau biarkan kosong)">
+          </div>
+          <div class="col-md-6 d-flex align-items-end mt-2">
+            <button id="btnLoad" class="btn btn-primary w-100">Load Google Sheet</button>
+          </div>
+        </div>
 
-<!-- Input -->
-<label>Spreadsheet ID</label><br>
-<input id="sheetId" style="width: 60%;" placeholder="Masukkan ID Spreadsheet"><br>
+        <div class="mt-3">
+          <small class="text-muted">Catatan: Apps Script Web App harus di-deploy dengan akses "Anyone".</small>
+          <div id="loadStatus" class="mt-2"><pre>Belum memuat data Google Sheet.</pre></div>
+        </div>
+      </div>
+    </div>
 
-<label>Sheet Name</label><br>
-<input id="sheetName" value="Sheet1" style="width: 60%;"><br>
+    <!-- Step 2: Upload Excel -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">2) Upload Excel Daftar Siswa</h5>
+        <div class="row g-2">
+          <div class="col-md-8">
+            <input id="fileExcel" type="file" accept=".xlsx,.xls" class="form-control">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="btnUpload" class="btn btn-success w-100" disabled>Upload Excel</button>
+          </div>
+        </div>
 
-<button onclick="loadSheet()">Ambil Data Nilai Google Sheet</button>
+        <div class="mt-3">
+          <div id="excelPreview" style="max-height:200px; overflow:auto; background:#fff; padding:10px; border-radius:6px">
+            <small class="text-muted">Preview akan muncul setelah upload.</small>
+          </div>
+        </div>
+      </div>
+    </div>
 
-<hr>
+    <!-- Step 3: Synchronize -->
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">3) Synchronize (Isi Score ke Excel)</h5>
 
-<h3>Upload Excel Daftar Siswa</h3>
-<input type="file" id="excelInput" accept=".xlsx" />
+        <div class="mb-2">
+          <small class="text-muted">Pengaturan kolom (sesuaikan bila berbeda):</small>
+        </div>
 
-<hr>
+        <div class="row g-2 mb-2">
+          <div class="col-md-4">
+            <label class="form-label">Nama - di Excel (kolom, 0-based)</label>
+            <input id="colNamaExcel" class="form-control" value="1" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Kelas - di Excel (kolom, 0-based)</label>
+            <input id="colKelasExcel" class="form-control" value="2" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Score - di Excel (kolom target, 0-based)</label>
+            <input id="colScoreExcel" class="form-control" value="3" />
+          </div>
+        </div>
 
-<h3>Pencarian & Filter</h3>
-<input id="searchBox" placeholder="Cari nama..." onkeyup="filterTable()">
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Nama - di Sheet (kolom index)</label>
+            <input id="colNamaSheet" class="form-control" value="2" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Score - di Sheet (kolom index)</label>
+            <input id="colScoreSheet" class="form-control" value="1" />
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button id="btnSync" class="btn btn-warning w-100" disabled>Synchronize</button>
+          </div>
+        </div>
 
-<select id="filterKelas" onchange="filterTable()">
-  <option value="">Semua Kelas</option>
-</select>
+        <div id="syncStatus"><small class="text-muted">Sinkron belum dijalankan.</small></div>
+      </div>
+    </div>
 
-<hr>
+    <!-- Step 4: Download -->
+    <div class="card mb-4 shadow-sm">
+      <div class="card-body d-flex gap-2">
+        <button id="btnDownload" class="btn btn-primary" disabled>Download Excel Hasil</button>
+        <button id="btnReset" class="btn btn-outline-secondary">Reset</button>
+      </div>
+    </div>
 
-<button onclick="exportExcel()">Export Excel</button>
-<button onclick="exportPDF()">Export PDF</button>
-<button onclick="downloadTemplate()">Download Template Excel</button>
+    <!-- Hasil table -->
+    <div class="card mb-5 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Preview Hasil Mapping</h5>
+        <div class="table-responsive">
+          <table id="tblResult" class="table table-sm table-bordered">
+            <thead class="table-light">
+              <tr><th>#</th><th>Nama (Excel)</th><th>Kelas (Excel)</th><th>Score (Sheet)</th><th>Status</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-<hr>
-
-<h3>Hasil Mapping</h3>
-<table id="resultTable">
-<thead>
-<tr>
-  <th>Nama</th>
-  <th>Kelas (Excel)</th>
-  <th>Kelas (Google)</th>
-  <th>Score</th>
-  <th>Status</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-
-<hr>
-<h3>Grafik Distribusi Nilai</h3>
-<canvas id="chartNilai"></canvas>
+  </div>
 
 <script>
-// ---------------------------
-// GLOBAL
-// ---------------------------
-let dataExcel = [];
-let dataGoogle = [];
-let mergedData = [];
+/* ---------------------------
+   Utility & State
+   --------------------------- */
 
-// ---------------------------
-// LOAD GOOGLE SHEET
-// ---------------------------
-async function loadSheet() {
-  const id = document.getElementById("sheetId").value.trim();
-  const sheet = document.getElementById("sheetName").value.trim();
+let rawSheet = [];      // array-of-arrays from Apps Script
+let rawExcel = null;    // XLSX workbook sheet as array-of-arrays
+let excelSheetName = null;
+let excelWorksheet = null; // worksheet object for writing back
+let resultRows = [];    // mapped results
 
-  if (!id) return alert("Masukkan ID Spreadsheet!");
-
-  const url = `https://script.google.com/macros/s/AKfycbwCJw9TUnX_YbNkWMqLZTsDwatTgUvM0mEGhBaQ09V8DPpoLtVPnovqFNT99lsjFqcu5w/exec?id=${id}&sheet=${sheet}`;
-  // Ganti XXXXXX dengan URL web app Anda
-
-  const res = await fetch(url);
-  dataGoogle = await res.json();
-
-  alert("Data nilai Google Sheet berhasil dimuat!");
-
-  // Isi dropdown kelas
-  fillKelasFilter();
-
-  combineData();
+// Normalize name for comparison
+function normalizeName(s) {
+  if (s === undefined || s === null) return "";
+  s = String(s);
+  try { s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); } catch(e){}
+  s = s.replace(/[^0-9a-zA-Z\s]/g, " ");
+  s = s.replace(/\s+/g, " ").trim().toLowerCase();
+  return s;
 }
 
-// ---------------------------
-// UPLOAD EXCEL
-// ---------------------------
-document.getElementById("excelInput").addEventListener("change", function(e) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const wb = XLSX.read(e.target.result, { type: "binary" });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+// Levenshtein distance (for fuzzy)
+function levenshtein(a,b){
+  if(!a) return b?b.length:0;
+  if(!b) return a.length;
+  const m = a.length, n = b.length;
+  const dp = Array(m+1).fill(null).map(()=>Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = Math.min(
+        dp[i-1][j]+1,
+        dp[i][j-1]+1,
+        dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
+      );
+    }
+  }
+  return dp[m][n];
+}
 
-    // Excel Format:
-    // B = Nama
-    // C = Kelas
-    // D = Score (akan ditimpa score dari Google Sheet)
-    dataExcel = json.slice(1).map(r => ({
-      nama: (r[1] || "").toString().trim(),
-      kelas: (r[2] || "").toString(),
-      score: ""
-    }));
+/* ---------------------------
+   Step controls (enable/disable)
+   --------------------------- */
+const btnLoad = document.getElementById('btnLoad');
+const btnUpload = document.getElementById('btnUpload');
+const btnSync = document.getElementById('btnSync');
+const btnDownload = document.getElementById('btnDownload');
+const btnReset = document.getElementById('btnReset');
 
-    alert("Excel berhasil diupload!");
-    combineData();
-  };
-  reader.readAsBinaryString(e.target.files[0]);
+function setUploadEnabled(v){
+  btnUpload.disabled = !v;
+}
+function setSyncEnabled(v){
+  btnSync.disabled = !v;
+}
+function setDownloadEnabled(v){
+  btnDownload.disabled = !v;
+}
+
+/* ---------------------------
+   Load Google Sheet (Step 1)
+   --------------------------- */
+btnLoad.addEventListener('click', async ()=>{
+  const api = document.getElementById('apiUrl').value.trim();
+  const sheetId = document.getElementById('sheetId').value.trim();
+  const range = document.getElementById('range').value.trim();
+
+  if(!api || !sheetId){
+    alert('Isi API URL dan Spreadsheet ID terlebih dahulu.');
+    return;
+  }
+
+  const url = api + '?id=' + encodeURIComponent(sheetId) + (range ? '&range=' + encodeURIComponent(range) : '');
+  document.getElementById('loadStatus').innerHTML = '<pre>Memuat data dari Google Sheet...</pre>';
+  try {
+    const resp = await fetch(url);
+    const j = await resp.json();
+    // Accept formats: array-of-arrays, or { success/data }, or array-of-objects
+    let data = null;
+    if(Array.isArray(j)) data = j;
+    else if(j.data && Array.isArray(j.data)) data = j.data;
+    else if(j.values && Array.isArray(j.values)) data = j.values;
+    else if(Array.isArray(j.result)) data = j.result;
+    else {
+      // try to find first array property
+      for(const k in j) if(Array.isArray(j[k])) { data = j[k]; break; }
+    }
+    if(!data || !Array.isArray(data) || data.length === 0){
+      throw new Error('Response format tidak dikenali atau data kosong.');
+    }
+
+    // Ensure array-of-arrays. If we got array-of-objects, convert:
+    if(typeof data[0] === 'object' && !Array.isArray(data[0])){
+      const headers = Object.keys(data[0]);
+      const rows = data.map(row => headers.map(h => row[h]));
+      data = [headers].concat(rows);
+    }
+
+    rawSheet = data;
+    document.getElementById('loadStatus').innerHTML = '<pre>Load sukses. Baris: ' + rawSheet.length + '</pre>';
+    setUploadEnabled(true);
+    // reset downstream
+    setSyncEnabled(false);
+    setDownloadEnabled(false);
+    resultRows = [];
+    renderResultTable();
+  } catch(err){
+    document.getElementById('loadStatus').innerHTML = '<pre style="color:red">Gagal load: '+String(err)+'</pre>';
+    setUploadEnabled(false);
+    setSyncEnabled(false);
+    setDownloadEnabled(false);
+    rawSheet = [];
+  }
 });
 
-// ---------------------------
-// LEVENSHTEIN (untuk nama mirip)
-// ---------------------------
-function similar(a, b) {
-  if (!a || !b) return 999;
-  a = a.toLowerCase(); b = b.toLowerCase();
+/* ---------------------------
+   Upload Excel (Step 2)
+   --------------------------- */
+document.getElementById('fileExcel').addEventListener('change', (e)=>{
+  // enable button once file selected
+  setUploadEnabled(e.target.files && e.target.files.length>0 && rawSheet.length>0);
+});
 
-  const dp = Array(a.length+1).fill().map(()=>Array(b.length+1).fill(0));
-  for (let i=0;i<=a.length;i++) dp[i][0]=i;
-  for (let j=0;j<=b.length;j++) dp[0][j]=j;
+btnUpload.addEventListener('click', ()=>{
+  const f = document.getElementById('fileExcel').files[0];
+  if(!f){ alert('Pilih file Excel terlebih dahulu.'); return; }
+  if(rawSheet.length === 0){ alert('Silakan Load Google Sheet terlebih dahulu.'); return; }
 
-  for (let i=1;i<=a.length;i++)
-    for (let j=1;j<=b.length;j++)
-      dp[i][j] = Math.min(
-        dp[i-1][j] + 1,
-        dp[i][j-1] + 1,
-        dp[i-1][j-1] + (a[i-1]==b[j-1]?0:1)
-      );
-
-  return dp[a.length][b.length];
-}
-
-// ---------------------------
-// COMBINE DATA
-// ---------------------------
-function combineData() {
-  if (!dataExcel.length || !dataGoogle.length) return;
-
-  mergedData = [];
-
-  dataExcel.forEach(ex => {
-    const namaExcel = ex.nama.toLowerCase().trim();
-
-    // Cari match PERFECT
-    let exact = dataGoogle.find(g => g.nama.toLowerCase() === namaExcel);
-
-    // Jika tidak ada, cari yang paling mirip
-    let similarMatch = null;
-    let minDist = 10;
-
-    if (!exact) {
-      dataGoogle.forEach(g => {
-        const d = similar(g.nama, ex.nama);
-        if (d < minDist) {
-          minDist = d;
-          similarMatch = g;
-        }
-      });
-    }
-
-    let status = "✔ Cocok";
-    let kelasGoogle = "";
-    let nilaiGoogle = "";
-
-    if (exact) {
-      kelasGoogle = exact.kelas;
-      nilaiGoogle = exact.nilai;
-    } 
-    else if (similarMatch && minDist <= 3) {
-      kelasGoogle = similarMatch.kelas;
-      nilaiGoogle = similarMatch.nilai;
-      status = "⚠ Nama Mirip";
-    } 
-    else {
-      status = "❌ Tidak ditemukan";
-    }
-
-    mergedData.push({
-      nama: ex.nama,
-      kelasExcel: ex.kelas,
-      kelasGoogle,
-      score: nilaiGoogle,
-      status,
-      highlight: status.includes("❌") ? "not-found" :
-                status.includes("⚠") ? "similar" : ""
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const wb = XLSX.read(ev.target.result, {type:'binary'});
+    excelSheetName = wb.SheetNames[0];
+    excelWorksheet = wb.Sheets[excelSheetName];
+    // store workbook for later write
+    // convert to array-of-arrays with header
+    rawExcel = XLSX.utils.sheet_to_json(excelWorksheet, {header:1, defval:""});
+    // preview (first 10 rows)
+    let html = '<table class="table table-sm"><thead><tr>';
+    const header = rawExcel[0] || [];
+    for(let c=0;c<header.length;c++) html += '<th>'+ (header[c]||'') +'</th>';
+    html += '</tr></thead><tbody>';
+    rawExcel.slice(1, 21).forEach((r,i) => {
+      html += '<tr>';
+      for(let c=0;c<(header.length);c++) html += '<td>' + (r[c]||'') + '</td>';
+      html += '</tr>';
     });
-  });
+    html += '</tbody></table>';
+    document.getElementById('excelPreview').innerHTML = html;
 
-  renderTable();
-  renderChart();
-}
+    // enable sync button
+    setSyncEnabled(true);
+    setDownloadEnabled(false);
+    resultRows = [];
+    renderResultTable();
+  };
+  reader.readAsBinaryString(f);
+});
 
-// ---------------------------
-// RENDER TABLE
-// ---------------------------
-function renderTable() {
-  const tbody = document.querySelector("#resultTable tbody");
-  tbody.innerHTML = "";
+/* ---------------------------
+   Synchronize (Step 3)
+   --------------------------- */
+btnSync.addEventListener('click', ()=>{
+  if(!rawExcel || rawExcel.length < 1){ alert('Excel belum di-upload.'); return; }
+  if(!rawSheet || rawSheet.length < 2){ alert('Google Sheet belum ter-load.'); return; }
 
-  mergedData.forEach(row => {
-    const tr = document.createElement("tr");
-    if (row.highlight) tr.classList.add(row.highlight);
+  // get column index settings (user can change)
+  const colNamaExcel = parseInt(document.getElementById('colNamaExcel').value,10);
+  const colKelasExcel = parseInt(document.getElementById('colKelasExcel').value,10);
+  const colScoreExcel = parseInt(document.getElementById('colScoreExcel').value,10);
+  const colNamaSheet = parseInt(document.getElementById('colNamaSheet').value,10);
+  const colScoreSheet = parseInt(document.getElementById('colScoreSheet').value,10);
 
-    tr.innerHTML = `
-      <td>${row.nama}</td>
-      <td>${row.kelasExcel}</td>
-      <td>${row.kelasGoogle}</td>
-      <td>${row.score}</td>
-      <td>${row.status}</td>
-    `;
+  // build lookup map from sheet (normalized name -> score)
+  const lookup = new Map();
+  for(let i=1;i<rawSheet.length;i++){
+    const row = rawSheet[i];
+    const nameCell = row[colNamaSheet];
+    const scoreCell = row[colScoreSheet];
+    const n = normalizeName(nameCell);
+    if(n) {
+      if(!lookup.has(n)) lookup.set(n, []);
+      lookup.get(n).push(scoreCell);
+    }
+  }
 
+  // process excel rows and write score into rawExcel (in memory)
+  resultRows = []; // hold preview result
+  for(let r=1; r<rawExcel.length; r++){
+    const row = rawExcel[r];
+    const namaExcel = (row[colNamaExcel] === undefined)? '': row[colNamaExcel];
+    const kelasExcel = (row[colKelasExcel] === undefined)? '': row[colKelasExcel];
+    const norm = normalizeName(namaExcel);
+    let status = 'OK';
+    let matchedScore = null;
+
+    if(lookup.has(norm)){
+      // exact match
+      const arr = lookup.get(norm);
+      matchedScore = arr[0]; // if multiple, take first
+      status = 'Ditemukan';
+    } else {
+      // fuzzy search: find best candidate with small distance
+      let best = {dist: 999, score: null, name: null};
+      for(const [nameKey, scores] of lookup.entries()){
+        const d = levenshtein(norm, nameKey);
+        if(d < best.dist){
+          best.dist = d;
+          best.score = scores[0];
+          best.name = nameKey;
+        }
+      }
+      if(best.dist <= 2 && best.score !== null){
+        matchedScore = best.score;
+        status = 'Mirip (autofill)';
+      } else {
+        status = 'Tidak ditemukan';
+      }
+    }
+
+    // write matchedScore into rawExcel row at target col
+    // ensure row has enough length
+    while(row.length <= colScoreExcel) row.push('');
+    row[colScoreExcel] = matchedScore !== null ? matchedScore : '';
+
+    // push preview
+    resultRows.push({
+      i: r,
+      nama: namaExcel,
+      kelas: kelasExcel,
+      score: matchedScore !== null ? matchedScore : '',
+      status
+    });
+  }
+
+  // Update preview table & enable download
+  renderResultTable();
+  document.getElementById('syncStatus').innerText = 'Sinkron selesai. Periksa hasil tabel. Jika cocok, klik Download Excel.';
+  setDownloadEnabled(true);
+});
+
+/* ---------------------------
+   Render preview/result table
+   --------------------------- */
+function renderResultTable(){
+  const tbody = document.querySelector('#tblResult tbody');
+  tbody.innerHTML = '';
+  if(resultRows.length === 0){
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada hasil.</td></tr>';
+    return;
+  }
+  resultRows.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    if(r.status === 'Tidak ditemukan') tr.classList.add('not-found');
+    if(r.status.startsWith('Mirip')) tr.classList.add('similar');
+    tr.innerHTML = `<td>${idx+1}</td>
+                    <td>${r.nama}</td>
+                    <td>${r.kelas}</td>
+                    <td>${r.score}</td>
+                    <td>${r.status}</td>`;
     tbody.appendChild(tr);
   });
 }
 
-// ---------------------------
-// FILTER & SEARCH
-// ---------------------------
-function filterTable() {
-  const search = document.getElementById("searchBox").value.toLowerCase();
-  const kelas = document.getElementById("filterKelas").value;
+/* ---------------------------
+   Download Excel Hasil (Step 4)
+   --------------------------- */
+btnDownload.addEventListener('click', ()=>{
+  if(!rawExcel || rawExcel.length === 0){ alert('Tidak ada data Excel untuk diunduh.'); return; }
 
-  const rows = document.querySelectorAll("#resultTable tbody tr");
-
-  rows.forEach(r => {
-    const nama = r.children[0].innerText.toLowerCase();
-    const kls = r.children[1].innerText;
-
-    const matchNama = nama.includes(search);
-    const matchKelas = kelas === "" || kelas === kls;
-
-    r.style.display = (matchNama && matchKelas) ? "" : "none";
-  });
-}
-
-function fillKelasFilter() {
-  const set = new Set(dataGoogle.map(d => d.kelas));
-  const sel = document.getElementById("filterKelas");
-
-  sel.innerHTML = `<option value="">Semua Kelas</option>`;
-  set.forEach(k => sel.innerHTML += `<option>${k}</option>`);
-}
-
-// ---------------------------
-// EXPORT EXCEL
-// ---------------------------
-function exportExcel() {
-  const ws = XLSX.utils.json_to_sheet(mergedData);
+  // Build new workbook from rawExcel (array-of-arrays)
+  const ws = XLSX.utils.aoa_to_sheet(rawExcel);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Data");
-  XLSX.writeFile(wb, "hasil_mapping.xlsx");
-}
+  XLSX.utils.book_append_sheet(wb, ws, excelSheetName || 'Sheet1');
 
-// ---------------------------
-// EXPORT PDF
-// ---------------------------
-function exportPDF() {
-  window.print();
-}
+  XLSX.writeFile(wb, 'hasil_mapping.xlsx');
+});
 
-// ---------------------------
-// TEMPLATE EXCEL
-// ---------------------------
-function downloadTemplate() {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([
-    ["No", "Nama", "Kelas", "Score"],
-    ["", "", "", ""]
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws, "Template");
-  XLSX.writeFile(wb, "template_siswa.xlsx");
-}
+/* ---------------------------
+   Reset button
+   --------------------------- */
+btnReset.addEventListener('click', ()=>{
+  rawSheet = [];
+  rawExcel = null;
+  resultRows = [];
+  excelWorksheet = null;
+  excelSheetName = null;
 
-// ---------------------------
-// GRAFIK NILAI
-// ---------------------------
-function renderChart() {
-  const ctx = document.getElementById("chartNilai");
+  document.getElementById('apiUrl').value = '';
+  document.getElementById('sheetId').value = '';
+  document.getElementById('range').value = '';
+  document.getElementById('fileExcel').value = '';
+  document.getElementById('excelPreview').innerHTML = '<small class="text-muted">Preview akan muncul setelah upload.</small>';
+  document.getElementById('loadStatus').innerHTML = '<pre>Belum memuat data Google Sheet.</pre>';
+  document.getElementById('syncStatus').innerHTML = '<small class="text-muted">Sinkron belum dijalankan.</small>';
+  renderResultTable();
+  setUploadEnabled(false);
+  setSyncEnabled(false);
+  setDownloadEnabled(false);
+});
 
-  const nilai = mergedData
-    .map(d => parseInt(d.score || 0))
-    .filter(n => !isNaN(n));
+/* ---------------------------
+   Initial state
+   --------------------------- */
+setUploadEnabled(false);
+setSyncEnabled(false);
+setDownloadEnabled(false);
+renderResultTable();
 
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: nilai.map((v,i)=>"S"+(i+1)),
-      datasets: [{
-        label: "Nilai",
-        data: nilai
-      }]
-    }
-  });
-}
 </script>
-
 </body>
 </html>
