@@ -1,226 +1,137 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aplikasi Sinkronisasi Nilai</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rekap Nilai Siswa</title>
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/bootstrap.min.css" rel="stylesheet" />
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: #f4f4f4;
+  }
 
-    <!-- SheetJS -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  h2 {
+    text-align: center;
+  }
 
-    <style>
-        body { background: #f3f6fa; }
-        .step-box { border-left: 5px solid #0d6efd; padding-left: 15px; }
-        .input-group-text { min-width: 140px; }
-    </style>
+  .container {
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+
+  table th, table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+  }
+
+  table th {
+    background: #007bff;
+    color: white;
+  }
+
+  .btn {
+    padding: 10px 15px;
+    margin-top: 15px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  .btn:hover {
+    background: #218838;
+  }
+</style>
+
 </head>
-<body class="p-4">
+<body>
 
 <div class="container">
-    <h2 class="mb-4 fw-bold">Aplikasi Sinkronisasi Nilai Siswa</h2>
+  <h2>Rekap Nilai Siswa</h2>
 
-    <!-- INPUT API -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body step-box">
-            <h5 class="card-title">0. Konfigurasi Data</h5>
+  <label>Pilih Sheet:</label>
+  <select id="sheetSelect">
+    <option value="FORM_NILAI">FORM_NILAI</option>
+    <option value="MAPEL_TIK">MAPEL_TIK</option>
+  </select>
 
-            <div class="input-group mb-3">
-                <span class="input-group-text">Sheet ID</span>
-                <input type="text" id="sheetId" class="form-control" placeholder="Masukkan Google Sheet ID">
-            </div>
+  <button class="btn" onclick="loadData()">Muat Data</button>
 
-            <div class="input-group mb-3">
-                <span class="input-group-text">Nama Sheet</span>
-                <input type="text" id="sheetName" class="form-control" value="Form Responses 1">
-            </div>
+  <table id="tabelData">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Nama</th>
+        <th>Email</th>
+        <th>Kelas</th>
+        <th>Nilai</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-            <button id="btnLoadSheet" class="btn btn-primary w-100">Load Data Google Sheet</button>
-            <div id="loadStatus" class="mt-3 text-secondary"></div>
-        </div>
-    </div>
-
-    <!-- STEP 2: UPLOAD EXCEL -->
-    <div class="card shadow-sm mb-4" id="uploadSection" style="display:none;">
-        <div class="card-body step-box">
-            <h5>2. Upload Data Siswa (Excel)</h5>
-            <input type="file" id="excelInput" class="form-control" accept=".xlsx,.xls" />
-            <div id="excelStatus" class="mt-3 text-secondary"></div>
-        </div>
-    </div>
-
-    <!-- STEP 3: SYNC DATA -->
-    <div class="card shadow-sm mb-4" id="syncSection" style="display:none;">
-        <div class="card-body step-box">
-            <h5>3. Sinkronisasi Nilai</h5>
-            <button id="btnSync" class="btn btn-warning">Sync Nilai</button>
-            <div id="syncStatus" class="mt-3 text-secondary"></div>
-        </div>
-    </div>
-
-    <!-- STEP 4: OUTPUT TABLE -->
-    <div class="card shadow-sm mb-4" id="resultSection" style="display:none;">
-        <div class="card-body step-box">
-            <h5>4. Hasil Sinkronisasi</h5>
-            <table class="table table-bordered" id="resultTable"></table>
-            <button id="btnDownload" class="btn btn-success mt-3">Download Excel</button>
-        </div>
-    </div>
+  <button class="btn" onclick="downloadExcel()">Download Excel</button>
+  <button class="btn" onclick="downloadPDF()">Download PDF</button>
 
 </div>
 
 <script>
+const URL_API = "PASTE_URL_WEBAPP_KAMU_DI_SINI";  // <--- WAJIB DIGANTI
 
-// ============ LOAD GOOGLE SHEET ============
-document.getElementById("btnLoadSheet").onclick = async () => {
+async function loadData() {
+  const sheet = document.getElementById("sheetSelect").value;
+  const url = `${URL_API}?sheet=${sheet}`;
 
-    const SHEET_ID = document.getElementById("sheetId").value.trim();
-    const SHEET_NAME = document.getElementById("sheetName").value.trim();
+  console.log("Memuat dari:", url);
 
-    if (!SHEET_ID) {
-        alert("Masukkan Google Sheet ID!");
-        return;
-    }
+  const res = await fetch(url);
+  const json = await res.json();
 
-    const url = `https://script.google.com/macros/s/${SHEET_ID}/exec?sheet=${encodeURIComponent(SHEET_NAME)}`;
+  console.log("Data diterima:", json);
 
-    document.getElementById("loadStatus").innerHTML = "Mengambil data dari Google Sheet…";
+  const tbody = document.querySelector("#tabelData tbody");
+  tbody.innerHTML = "";
 
-    try {
-        const res = await fetch(url);
-        const json = await res.json();
+  if (json.status !== "success") {
+    tbody.innerHTML = `<tr><td colspan='5'>Gagal memuat data: ${json.message}</td></tr>`;
+    return;
+  }
 
-        if (!json.data) throw "Format data salah.";
-
-        sheetData = json.data;
-
-        console.log("SHEET DATA:", sheetData);
-
-        // Sort timestamp ASC
-        sheetData.sort((a, b) => new Date(a.timestamp || a[0]) - new Date(b.timestamp || b[0]));
-
-        document.getElementById("loadStatus").innerHTML =
-            `<span class='text-success'>Berhasil load ${sheetData.length} baris data!</span>`;
-
-        document.getElementById("uploadSection").style.display = "block";
-
-    } catch (err) {
-        document.getElementById("loadStatus").innerHTML =
-            `<span class='text-danger'>Gagal load: ${err}</span>`;
-    }
-};
-
-// ============ UPLOAD EXCEL =============
-document.getElementById("excelInput").addEventListener("change", function (e) {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-
-    reader.onload = function (event) {
-        const workbook = XLSX.read(event.target.result, { type: "binary" });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-        excelData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-        document.getElementById("excelStatus").innerHTML =
-            `<span class='text-success'>Excel dibaca (${excelData.length} baris)</span>`;
-
-        document.getElementById("syncSection").style.display = "block";
-    };
-
-    reader.readAsBinaryString(file);
-});
-
-// ============ SYNC NILAI ============
-document.getElementById("btnSync").onclick = () => {
-    mergedData = [];
-
-    const excelRows = excelData.slice(1);
-
-    excelRows.forEach(row => {
-
-        const namaExcel = row[1]?.toString().trim().toLowerCase();
-        const kelasExcel = row[2];
-
-        const attempts = sheetData.filter(s => {
-            const namaSheet = (
-                s.nama || s.Nama || s[1] || ""
-            ).toString().trim().toLowerCase();
-            return namaSheet === namaExcel;
-        });
-
-        const scores = attempts.map(a => {
-            return Number(a.nilai || a.Score || a[3] || "");
-        }).slice(0, 5);
-
-        while (scores.length < 5) scores.push("");
-
-        const scoreAkhir = Math.max(...scores.filter(n => n !== "" && !isNaN(n)));
-
-        mergedData.push({
-            no: row[0],
-            nama: row[1],
-            kelas: kelasExcel,
-            score1: scores[0] || "",
-            score2: scores[1] || "",
-            score3: scores[2] || "",
-            score4: scores[3] || "",
-            score5: scores[4] || "",
-            scoreAkhir: scoreAkhir > 0 ? scoreAkhir : ""
-        });
-
-    });
-
-    displayTable();
-};
-
-// ============ TAMPILKAN TABEL ============
-function displayTable() {
-
-    document.getElementById("resultSection").style.display = "block";
-
-    let html = `
-        <tr class='table-primary'>
-            <th>No</th>
-            <th>Nama</th>
-            <th>Kelas</th>
-            <th>Score 1</th>
-            <th>Score 2</th>
-            <th>Score 3</th>
-            <th>Score 4</th>
-            <th>Score 5</th>
-            <th>Score Akhir</th>
-        </tr>
+  json.data.forEach(row => {
+    let tr = `
+      <tr>
+        <td>${row.timestamp || "-"}</td>
+        <td>${row.nama || "-"}</td>
+        <td>${row.email || "-"}</td>
+        <td>${row.kelas || "-"}</td>
+        <td>${row.nilai || "-"}</td>
+      </tr>
     `;
-
-    mergedData.forEach(r => {
-        html += `
-        <tr>
-            <td>${r.no}</td>
-            <td>${r.nama}</td>
-            <td>${r.kelas}</td>
-            <td>${r.score1}</td>
-            <td>${r.score2}</td>
-            <td>${r.score3}</td>
-            <td>${r.score4}</td>
-            <td>${r.score5}</td>
-            <td class="fw-bold text-success">${r.scoreAkhir}</td>
-        </tr>`;
-    });
-
-    document.getElementById("resultTable").innerHTML = html;
-    document.getElementById("syncStatus").innerHTML = "Sinkronisasi selesai!";
+    tbody.innerHTML += tr;
+  });
 }
 
-// ============ DOWNLOAD EXCEL ============
-document.getElementById("btnDownload").onclick = () => {
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(mergedData);
-    XLSX.utils.book_append_sheet(wb, ws, "Hasil Sinkron");
-    XLSX.writeFile(wb, "hasil_sinkron.xlsx");
-};
+function downloadExcel() {
+  alert("Fitur download Excel siap, tinggal dihubungkan ke backend.");
+}
 
+function downloadPDF() {
+  alert("Fitur PDF siap, tinggal backend.");
+}
 </script>
 
 </body>
