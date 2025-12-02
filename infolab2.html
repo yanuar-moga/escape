@@ -1,128 +1,323 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Lab 2 - Viewer Mode</title>
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f1f1f1;
-        padding: 20px;
-    }
-    h1 {
-        text-align: center;
-        margin-bottom: 15px;
-    }
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 10px;
-        margin-top: 20px;
-    }
-    .meja {
-        background: white;
-        border: 2px solid #ccc;
-        padding: 10px;
-        border-radius: 8px;
-        min-height: 110px;
-    }
-    .meja.merah { background: #ffb3b3; }
-    .meja.kuning { background: #fff7b3; }
-    .meja.hijau { background: #b3ffb3; }
-    .meja.ungu { background: #d9b3ff; }
-    
-    .title {
-        font-weight: bold;
-        font-size: 17px;
-        margin-bottom: 6px;
-    }
-    .note {
-        font-size: 13px;
-        white-space: pre-line;
-    }
+    <meta charset="UTF-8">
+    <title>Dashboard Inventaris Lab Komputer 2 (Viewer)</title>
 
-    .download-btn {
-        display: block;
-        width: 200px;
-        margin: 10px auto 20px;
-        padding: 10px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 16px;
-        text-align: center;
-    }
-</style>
+    <style>
+        body {
+            font-family: 'Calibri', sans-serif;
+            background: #f4f7fb;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .header {
+            background: #0056b3;
+            padding: 15px 25px;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            border-left: 10px solid #ffcc00;
+            width: fit-content;
+            border-radius: 5px;
+        }
+
+        .card-container {
+            display: grid;
+            grid-template-columns: repeat(3, 260px);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: white;
+            border-left: 6px solid #ffcc00;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            font-size: 18px;
+        }
+
+        .card-title {
+            color: #0056b3;
+            font-weight: bold;
+        }
+
+        /* MAP GRID */
+        #mapGrid {
+            display: grid;
+            grid-template-columns: repeat(11, 55px);
+            gap: 6px;
+            margin-top: 30px;
+            margin-bottom: 40px;
+        }
+
+        .meja {
+            width: 55px;
+            height: 45px;
+            border-radius: 6px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .normal { background: #28a745; color: white; }
+        .ringan { background: #ffc107; color: black; }
+        .berat { background: #dc3545; color: white; }
+        .signed { background: #007bff !important; color: white !important; }
+        .kosong { background: transparent; border: none; cursor: default; }
+
+        #detailBox {
+            background: white;
+            width: 360px;
+            padding: 18px;
+            border-radius: 8px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        #detailBox h3 {
+            margin-top: 0;
+            color: #0056b3;
+            border-left: 6px solid #ffcc00;
+            padding-left: 8px;
+        }
+
+        /* DOWNLOAD BUTTON */
+        #downloadLogBtn {
+            margin-top: 20px;
+            background: #1d9bf0;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+    </style>
 </head>
 <body>
 
-<h1>💻 Viewer Mode – Lab 2</h1>
+<div class="header">📘 Dashboard Inventaris Lab Komputer (Viewer Mode)</div>
 
-<button class="download-btn" onclick="downloadLog()">📥 Download Log Masalah</button>
+<button id="downloadLogBtn" onclick="downloadLog()">⬇ Download Log Masalah</button>
 
-<div class="grid" id="grid"></div>
+<div id="dashboard" class="card-container">
+    <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
+    <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
+    <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
 
+    <div class="card"><div class="card-title">Perangkat Normal</div><span id="normalCount">-</span></div>
+    <div class="card"><div class="card-title">Rusak Ringan</div><span id="ringanCount">-</span></div>
+    <div class="card"><div class="card-title">Rusak Berat</div><span id="beratCount">-</span></div>
+
+    <div class="card"><div class="card-title">Kebutuhan Mouse</div><span id="mouseNeed">-</span></div>
+    <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
+</div>
+
+<h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab dan Letak Laptop</h2>
+
+<div id="mapGrid"></div>
+
+<div id="detailBox"></div>
+
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script>
-/* ======================================================
-   LOAD DATA MEJA + TANDA MASALAH DARI LOCALSTORAGE
-   ====================================================== */
 
-function loadData() {
+let INV = [];
 
-    let grid = document.getElementById("grid");
+/* =========================================
+   DATA LOGIN WIFI LAB 2 (READ ONLY)
+========================================= */
+const wifiLab2 = {};
+for (let i = 1; i <= 36; i++) {
+    wifiLab2[i] = { user:`${i}lab2`, pass:`${i}` };
+}
+
+/* =========================================
+   AKUN BELAJAR CHROMEBOOK
+========================================= */
+const chromeAccounts = [
+    { user:"putri.wika67@smp.belajar.id" , pass:"Belajar2025!" },
+    { user:"kallista.putri192@smp.belajar.id" , pass:"Belajar2025!" },
+    { user:"yulia.al83@smp.belajar.id" , pass:"Belajar2025!" },
+    { user:"nazril.hidayatullah18@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"muhammad.febri1219@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"muhamad.rizkan48@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"safania.52@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"nia.hidayati013@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"nayilla_azzahra25@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"widya.setya31@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"yusuf.fahreza18@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"muhamad.arif3591@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"muhamad.faiz3380@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"muhammad.khairul8017@smp.belajar.id", pass:"Belajar2025!" },
+    { user:"aisyatul.maulida49@smp.belajar.id", pass:"Belajar2025!" }
+];
+
+/* =========================================
+   LOGIN AUTO (VIEW ONLY)
+========================================= */
+function getLogin(no, item) {
+    const os = (item.OS || "").toLowerCase();
+
+    if (os.includes("windows")) {
+        return wifiLab2[no] || { user:"-", pass:"-" };
+    }
+
+    if (os.includes("chromebook")) {
+        let idx = (no - 1) % chromeAccounts.length;
+        return chromeAccounts[idx];
+    }
+
+    return { user:"-", pass:"-" };
+}
+
+/* =========================================
+   LOAD INVENTARIS EXCEL
+========================================= */
+async function loadExcel() {
+    const res = await fetch("assets/inventarislab2.xlsx");
+    const buf = await res.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
+
+    INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
+
+    updateDashboard();
+    renderMap();
+}
+loadExcel();
+
+/* =========================================
+   DASHBOARD (READ ONLY)
+========================================= */
+function updateDashboard() {
+    const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
+    const chrome = INV.filter(x => (x.OS || "").toLowerCase() === "chromebook");
+
+    const normal   = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal");
+    const ringan   = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan"));
+    const berat    = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat"));
+
+    const needMouse    = INV.filter(x => (x.Mouse || "").toLowerCase() === "tidak");
+    const needKeyboard = INV.filter(x => (x.Keyboard || "").toLowerCase() === "tidak");
+
+    document.getElementById("totalPerangkat").innerText = win.length + chrome.length;
+    document.getElementById("totalWindows").innerText = win.length;
+    document.getElementById("totalChromebook").innerText = chrome.length;
+
+    document.getElementById("normalCount").innerText = normal.length;
+    document.getElementById("ringanCount").innerText = ringan.length;
+    document.getElementById("beratCount").innerText = berat.length;
+
+    document.getElementById("mouseNeed").innerText = needMouse.length;
+    document.getElementById("keyboardNeed").innerText = needKeyboard.length;
+}
+
+/* =========================================
+   MAP GRID
+========================================= */
+function renderMap() {
+    const grid = document.getElementById("mapGrid");
     grid.innerHTML = "";
 
-    for (let i = 1; i <= 36; i++) {
+    const rows = [
+        [22,21,20,19,18,17,"",4,3,2,1],
+        [28,27,26,25,24,23,"",8,7,6,5],
+        [34,33,32,31,30,29,"",12,11,10,9],
+        [40,39,38,37,36,35,"",16,15,14,13]
+    ];
 
-        let mejaKey = "meja" + i;
-        let data = JSON.parse(localStorage.getItem(mejaKey)) || {
-            status: "normal",
-            note: ""
-        };
+    rows.forEach(r => {
+        r.forEach(mejaNum => {
 
-        let div = document.createElement("div");
-        div.classList.add("meja");
+            const div = document.createElement("div");
 
-        // warna by status
-        if (data.status === "masalah") div.classList.add("ungu");
-        if (data.status === "normal") div.classList.add("hijau");
+            if (mejaNum === "") {
+                div.className = "meja kosong";
+                grid.appendChild(div);
+                return;
+            }
 
-        div.innerHTML = `
-            <div class="title">Meja ${i}</div>
-            <div class="note">${data.note || ""}</div>
-        `;
+            const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
 
-        grid.appendChild(div);
+            let kondisiClass = "kosong";
+            if (item) {
+                let k = (item.Kondisi || "").toLowerCase();
+                if (k === "normal") kondisiClass = "normal";
+                else if (k.includes("ringan")) kondisiClass = "ringan";
+                else if (k.includes("berat")) kondisiClass = "berat";
+                if (item.signed) kondisiClass = "signed";
+            }
+
+            div.className = `meja ${kondisiClass}`;
+            div.textContent = mejaNum;
+
+            if (item) div.onclick = () => showDetail(mejaNum);
+
+            grid.appendChild(div);
+        });
+    });
+}
+
+/* =========================================
+   DETAIL POPUP (NO BUTTONS!)
+========================================= */
+function showDetail(no) {
+    const box = document.getElementById("detailBox");
+    const item = INV.find(x => String(x["NO MEJA"]) === String(no));
+
+    box.style.display = "block";
+
+    if (!item) {
+        box.innerHTML = `<h3>Detail Meja ${no}</h3>Data tidak ditemukan`;
+        return;
+    }
+
+    const login = getLogin(no, item);
+
+    box.innerHTML = `
+        <h3>Detail Meja ${no}</h3>
+        <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
+        <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
+        <b>OS:</b> ${item["OS"] || "-"}<br><br>
+
+        <b>Username:</b> ${login.user}<br>
+        <b>Password:</b> ${login.pass}<br><br>
+    `;
+}
+
+/* =========================================
+   DOWNLOAD LOG (SERVER SIDE)
+========================================= */
+async function downloadLog() {
+    try {
+        const res = await fetch("logs/log.txt");
+        if (!res.ok) {
+            alert("❌ log.txt tidak ditemukan");
+            return;
+        }
+
+        const text = await res.text();
+        const blob = new Blob([text], { type:"text/plain" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "log-lab2.txt";
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+    } catch (err) {
+        alert("❌ Gagal mengambil log");
     }
 }
 
-
-/* ======================================================
-   DOWNLOAD LOG MASALAH
-   ====================================================== */
-
-function downloadLog() {
-    let log = localStorage.getItem("lab2_log") || "Tidak ada log.\n";
-
-    let blob = new Blob([log], { type: "text/plain" });
-    let url = URL.createObjectURL(blob);
-
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = "lab2-log.txt";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
-
-
-/* ======================================================
-   AUTO LOAD SAAT HALAMAN DIBUKA
-   ====================================================== */
-
-window.onload = loadData;
 </script>
 
 </body>
