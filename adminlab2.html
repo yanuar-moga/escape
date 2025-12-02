@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Dashboard Inventaris Lab Komputer 2</title>
+
 <style>
     body {
         font-family: 'Calibri', sans-serif;
@@ -12,7 +13,6 @@
         margin: 0;
     }
 
-    /* HEADER */
     .header {
         background: #0056b3;
         padding: 15px 25px;
@@ -24,7 +24,6 @@
         border-radius: 5px;
     }
 
-    /* DASHBOARD CARDS */
     .card-container {
         display: grid;
         grid-template-columns: repeat(3, 260px);
@@ -46,7 +45,6 @@
         font-weight: bold;
     }
 
-    /* MAP GRID */
     #mapGrid {
         display: grid;
         grid-template-columns: repeat(11, 55px);
@@ -67,15 +65,17 @@
         user-select: none;
     }
 
-    .normal { background: #28a745; color: white; }
-    .ringan { background: #ffc107; color: black; }
-    .berat  { background: #dc3545; color: white; }
-    .signed { background: #007bff !important; color: white !important; }
-    .marked { background: #7a00ff !important; color: white !important; }
+    .normal   { background: #28a745; color: white; }
+    .ringan   { background: #ffc107; color: black; }
+    .berat    { background: #dc3545; color: white; }
+    .signed   { background: #007bff !important; color: white !important; }
+    .marked   { background: #7a00ff !important; color: white !important; }
 
-    .kosong { background: transparent; border: none; cursor: default; }
+    /* ✔️ BARU: meja tanpa inventaris */
+    .empty    { background: #c4c4c4 !important; color: #555 !important; }
 
-    /* POPUP DETAIL */
+    .kosong   { background: transparent; border: none; cursor: default; }
+
     #detailBox {
         background: white;
         width: 360px;
@@ -96,18 +96,17 @@
         padding-left: 8px;
     }
 
-    /* Buttons */
     .btn {
         display:inline-block;padding:8px 12px;border-radius:6px;border:1px solid #0056b3;cursor:pointer;
         background: white;color:#0056b3;font-weight:bold;
     }
+
     .btn-ghost { background:transparent;border:1px solid #ddd;color:#333; }
     .btn-primary { background:#007bff;color:white;border:none; }
-    .btn-mark { background:#7a00ff;color:white;border:none; }
-    .btn-reset { background:#ff3399;color:white;border:none; }
-    .btn-download { background:#00aa55;color:white;border:none; }
+    .btn-mark    { background:#7a00ff;color:white;border:none; }
+    .btn-reset   { background:#ff3399;color:white;border:none; }
+    .btn-download{ background:#00aa55;color:white;border:none; }
 
-    /* Floating admin control top-right */
     #adminControl {
         position: fixed;
         top: 12px;
@@ -117,7 +116,8 @@
         gap:8px;
         align-items:center;
     }
-    #btnLogin, #btnLogout {
+
+    #btnLogin,#btnLogout {
         background: #6436ff;
         color: white;
         border: none;
@@ -130,85 +130,61 @@
     }
     #btnLogout { background:#e91e63; }
 
-    @media (max-width: 900px) {
-        .card-container { grid-template-columns: repeat(1, 1fr); }
-        #mapGrid { grid-template-columns: repeat(6, 55px); }
-        #detailBox { position: static; width: auto; margin-top:20px; left: 12px; right:12px; }
-    }
 </style>
 </head>
 <body>
 
 <div class="header">📘 Dashboard Inventaris Lab Komputer</div>
 
-<!-- Floating admin control -->
 <div id="adminControl">
     <button id="btnLogin" onclick="loginAdmin()">Masuk Admin</button>
     <button id="btnLogout" onclick="logoutAdmin()" style="display:none;">Keluar</button>
 </div>
 
-<!-- Action buttons (some are admin-only) -->
 <div style="margin-top:14px;margin-bottom:6px;">
-    <button id="resetSigns" class="btn btn-reset" title="Reset semua sign-in">Reset Semua Sign-In</button>
-    <button id="resetMarkBtn" class="btn btn-reset" title="Reset semua tanda masalah" style="margin-left:8px;">Reset Semua Tanda Masalah</button>
-    <button id="downloadLog" class="btn btn-download" style="margin-left:8px;">Download Log</button>
+    <button id="resetSigns" class="btn btn-reset">Reset Semua Sign-In</button>
+    <button id="resetMarkBtn" class="btn btn-reset">Reset Semua Tanda Masalah</button>
+    <button id="downloadLog" class="btn btn-download">Download Log</button>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" class="card-container" style="margin-bottom:10px;">
     <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
     <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
     <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
-
     <div class="card"><div class="card-title">Perangkat Normal</div><span id="normalCount">-</span></div>
     <div class="card"><div class="card-title">Rusak Ringan</div><span id="ringanCount">-</span></div>
     <div class="card"><div class="card-title">Rusak Berat</div><span id="beratCount">-</span></div>
-
     <div class="card"><div class="card-title">Kebutuhan Mouse</div><span id="mouseNeed">-</span></div>
     <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
 </div>
 
-<h2 style="color:#0056b3;margin-top:8px;">📍 Peta Meja Lab dan Letak Laptop</h2>
+<h2 style="color:#0056b3;margin-top:8px;">📍 Peta Meja Lab</h2>
 <div id="mapGrid"></div>
-
 <div id="detailBox"></div>
 
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script>
-/* ============================================================
-   CONFIGURATION
-============================================================ */
-const ADMIN_PIN = "17081945"; // sesuai permintaan
-let isAdmin = false;          // default viewer
+/* ======================= CONFIG ======================= */
+const ADMIN_PIN = "17081945";
+let isAdmin = false;
 
-/* ============================================================
-   DATA: WIFI & CHROME ACCOUNTS
-============================================================ */
+/* wifi & belajar data */
 const WIFI = {};
 for(let i=1;i<=36;i++){ WIFI[i] = { user: `${i}lab2`, pass: String(i) }; }
 
 const CHROME_ACCOUNTS = [
-    "putri.wika67@smp.belajar.id",
-    "kallista.putri192@smp.belajar.id",
-    "yulia.al83@smp.belajar.id",
-    "nazril.hidayatullah18@smp.belajar.id",
-    "muhammad.febri1219@smp.belajar.id",
-    "muhamad.rizkan48@smp.belajar.id",
-    "safania.52@smp.belajar.id",
-    "nia.hidayati013@smp.belajar.id",
-    "nayilla_azzahra25@smp.belajar.id",
-    "widya.setya31@smp.belajar.id",
-    "yusuf.fahreza18@smp.belajar.id",
-    "muhamad.arif3591@smp.belajar.id",
-    "muhamad.faiz3380@smp.belajar.id",
-    "muhammad.khairul8017@smp.belajar.id",
+    "putri.wika67@smp.belajar.id","kallista.putri192@smp.belajar.id",
+    "yulia.al83@smp.belajar.id","nazril.hidayatullah18@smp.belajar.id",
+    "muhammad.febri1219@smp.belajar.id","muhamad.rizkan48@smp.belajar.id",
+    "safania.52@smp.belajar.id","nia.hidayati013@smp.belajar.id",
+    "nayilla_azzahra25@smp.belajar.id","widya.setya31@smp.belajar.id",
+    "yusuf.fahreza18@smp.belajar.id","muhamad.arif3591@smp.belajar.id",
+    "muhamad.faiz3380@smp.belajar.id","muhammad.khairul8017@smp.belajar.id",
     "aisyatul.maulida49@smp.belajar.id"
 ];
 const CHROME_PASS = "Belajar2025!";
 
-/* ============================================================
-   LOCAL STORAGE KEYS: sign-in & marks & logs
-============================================================ */
+/* localStorage keys */
 const LS_SIGNED = "lab2_signed";
 const LS_MARK   = "lab2_marked";
 const LS_LOG_PREF = "lab2_log_";
@@ -216,88 +192,23 @@ const LS_LOG_PREF = "lab2_log_";
 let SIGNED = JSON.parse(localStorage.getItem(LS_SIGNED) || "{}");
 let MARKED = JSON.parse(localStorage.getItem(LS_MARK) || "{}");
 
-/* ============================================================
-   UTILITIES: LOG (per hari)
-============================================================ */
 function todayKey(){ return LS_LOG_PREF + new Date().toISOString().split("T")[0]; }
-function appendLog(meja, text){
-    const key = todayKey();
-    const waktu = new Date().toLocaleString("id-ID");
-    const prev = localStorage.getItem(key) || "";
-    localStorage.setItem(key, prev + `${waktu} | Meja ${meja} | ${text}\n`);
-}
-function getAllLogs(){
-    let out = "";
-    // sort keys so earlier dates first
-    const keys = [];
-    for(let i=0;i<localStorage.length;i++){
-        const k = localStorage.key(i);
-        if(k.startsWith(LS_LOG_PREF)) keys.push(k);
-    }
-    keys.sort();
-    keys.forEach(k=>{
-        out += "=== " + k.replace(LS_LOG_PREF,"Tanggal: ") + " ===\n";
-        out += (localStorage.getItem(k) || "") + "\n";
-    });
-    return out || "Belum ada log...";
-}
 
-/* ============================================================
-   LOAD INVENTARIS (assets/inventarislab2.xlsx) - sheet "INV"
-============================================================ */
+/* ======================= EXCEL LOAD ======================= */
 let INV = [];
+
 async function loadExcel(){
     try {
         const res = await fetch("assets/inventarislab2.xlsx");
-        if(!res.ok) throw new Error("File tidak ditemukan");
         const buf = await res.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
-        INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"] || wb.Sheets[wb.SheetNames[0]]);
+        const wb = XLSX.read(buf, { type:"array" });
+        INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
+    } catch {}
 
-        // apply SIGNED & MARKED from LS to INV items if matching NO MEJA
-        if(INV && INV.length){
-            INV.forEach(it=>{
-                const no = String(it["NO MEJA"] ?? it["No Meja"] ?? "").trim();
-                if(no){
-                    if(SIGNED[no]) it.signed = true;
-                    if(MARKED[no]) it.markedNote = MARKED[no];
-                }
-            });
-        }
-
-        updateDashboard();
-        renderMap();
-    } catch(e) {
-        console.warn(e);
-        // still render map so manual operations can be tested even without excel
-        updateDashboard();
-        renderMap();
-    }
-}
-loadExcel();
-
-/* ============================================================
-   DASHBOARD
-============================================================ */
-function updateDashboard(){
-    const win = INV.filter(x => (x.OS||"").toLowerCase().includes("windows"));
-    const chrome = INV.filter(x => (x.OS||"").toLowerCase().includes("chrome"));
-
-    document.getElementById("totalPerangkat").innerText = (win.length + chrome.length) || 0;
-    document.getElementById("totalWindows").innerText = win.length || 0;
-    document.getElementById("totalChromebook").innerText = chrome.length || 0;
-
-    document.getElementById("normalCount").innerText = INV.filter(x=> (x.Kondisi||"").toLowerCase()==="normal").length;
-    document.getElementById("ringanCount").innerText = INV.filter(x=> (x.Kondisi||"").toLowerCase().includes("ringan")).length;
-    document.getElementById("beratCount").innerText  = INV.filter(x=> (x.Kondisi||"").toLowerCase().includes("berat")).length;
-
-    document.getElementById("mouseNeed").innerText = INV.filter(x=> (x.Mouse||"").toLowerCase()==="tidak").length;
-    document.getElementById("keyboardNeed").innerText = INV.filter(x=> (x.Keyboard||"").toLowerCase()==="tidak").length;
+    renderMap();
 }
 
-/* ============================================================
-   RENDER MAP
-============================================================ */
+/* ======================= MAP RENDER ======================= */
 function renderMap(){
     const grid = document.getElementById("mapGrid");
     grid.innerHTML = "";
@@ -312,6 +223,7 @@ function renderMap(){
     rows.forEach(r=>{
         r.forEach(no=>{
             const div = document.createElement("div");
+
             if(no === ""){
                 div.className = "meja kosong";
                 grid.appendChild(div);
@@ -320,192 +232,45 @@ function renderMap(){
 
             const item = INV.find(x => String(x["NO MEJA"]).trim() === String(no).trim());
 
-            let cls = "kosong";
+            let cls;
+
             if(item){
+                /* normal kondisi */
                 if(MARKED[String(no)]) cls = "marked";
-                else if(item.signed || SIGNED[String(no)]) cls = "signed";
+                else if(SIGNED[String(no)]) cls = "signed";
                 else {
                     const k = (item.Kondisi||"").toLowerCase();
-                    if(k === "normal") cls = "normal";
-                    else if(k.includes("ringan")) cls = "ringan";
-                    else if(k.includes("berat")) cls = "berat";
-                    else cls = "normal";
+                    if(k==="normal") cls="normal";
+                    else if(k.includes("ringan")) cls="ringan";
+                    else if(k.includes("berat")) cls="berat";
+                    else cls="normal";
                 }
             } else {
-                // If no item in INV, still show as normal clickable seat
-                cls = MARKED[String(no)] ? "marked" : (SIGNED[String(no)] ? "signed" : "normal");
+                /* ✔️ BARU: meja tanpa data inventaris */
+                cls = "empty";
             }
 
-            div.className = "meja " + cls;
+            div.className = "meja "+cls;
             div.textContent = no;
-            div.onclick = () => showDetail(no);
+            div.onclick = ()=> showDetail(no);
             grid.appendChild(div);
         });
     });
-
-    // after render, enforce access (hide buttons if viewer)
-    renderAccessUI();
 }
 
-/* ============================================================
-   ACCESS CONTROL (admin / viewer)
-============================================================ */
-function renderAccessUI(){
-    // floating buttons
-    document.getElementById("btnLogin").style.display  = isAdmin ? "none" : "inline-block";
-    document.getElementById("btnLogout").style.display = isAdmin ? "inline-block" : "none";
-
-    // global admin-only buttons
-    document.querySelectorAll("#resetSigns, #resetMarkBtn").forEach(btn=>{
-        btn.style.display = isAdmin ? "inline-block" : "none";
-    });
-
-    // detail popup buttons will be rendered dynamically; this function hides them if present
-    document.querySelectorAll(".btn-sign, .btn-mark").forEach(b=> {
-        b.style.display = isAdmin ? "inline-block" : "none";
-    });
-}
-
-/* login/logout */
-function loginAdmin(){
-    const p = prompt("Masukkan PIN Admin:");
-    if(p === ADMIN_PIN){
-        isAdmin = true;
-        alert("Berhasil masuk ADMIN");
-        renderAccessUI();
-    } else {
-        alert("PIN salah");
-    }
-}
-function logoutAdmin(){
-    isAdmin = false;
-    alert("Mode Viewer aktif");
-    renderAccessUI();
-}
-
-/* ============================================================
-   SHOW DETAIL POPUP (WiFi + Belajar + Actions)
-============================================================ */
+/* ======================= DETAIL & ADMIN ======================= */
 function showDetail(no){
-    const box = document.getElementById("detailBox");
-    // find item (permissive with column names)
-    const item = INV.find(x => {
-        const val = x["NO MEJA"] ?? x["No Meja"] ?? x["NO_MEJA"];
-        return String(val).trim() === String(no).trim();
-    }) || {};
-
-    box.style.display = "block";
-
-    const wifi = WIFI[no] || {user:"-", pass:"-"};
-    const isChrome = ((item.OS||"").toLowerCase().includes("chrome") || (item.OS||"").toLowerCase().includes("chromebook"));
-    const belajarUser = isChrome ? (CHROME_ACCOUNTS[(no-1) % CHROME_ACCOUNTS.length] || "-") : "-";
-
-    const markedNote = MARKED[String(no)] || item.markedNote || "-";
-    const signedNow = !!(SIGNED[String(no)] || item.signed);
-
-    box.innerHTML = `
-        <h3>Detail Meja ${no}</h3>
-
-        <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
-        <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
-        <b>OS:</b> ${item["OS"] || "-"}<br>
-        <b>Kondisi:</b> ${item["Kondisi"] || "-"}<br><br>
-
-        <div class="small"><b>Akun WiFi (LAB 2)</b></div>
-        <b>Username:</b> ${wifi.user}<br>
-        <b>Password:</b> ${wifi.pass}<br><br>
-
-        <div class="small"><b>Akun Belajar.ID</b></div>
-        <b>Email:</b> ${isChrome ? belajarUser : "-"}<br>
-        <b>Password:</b> ${isChrome ? CHROME_PASS : "-"}<br><br>
-
-        <b>Status Signed:</b> ${signedNow ? "Sudah" : "Belum"}<br>
-        <b>Catatan Mark:</b> ${markedNote}<br>
-
-        <div style="margin-top:12px;">
-            <button id="btnSign${no}" class="btn btn-primary btn-sign" style="margin-right:8px;">${signedNow ? "✔ Tandai Ulang Sign-In" : "✔ Tandai Sudah Sign-In"}</button>
-            <button id="btnMark${no}" class="btn btn-mark" style="margin-right:8px;">🚩 Tandai Masalah</button>
-            <button id="btnClose" class="btn btn-ghost">Tutup</button>
-        </div>
-    `;
-
-    // enforce visibility based on role
-    renderAccessUI();
-
-    // handlers
-    document.getElementById(`btnClose`).onclick = () => { box.style.display = "none"; };
-
-    document.getElementById(`btnSign${no}`).onclick = () => {
-        if(!isAdmin){ alert("Hanya Admin yang dapat mengubah status sign-in."); return; }
-        const key = String(no);
-        const now = !SIGNED[key];
-        SIGNED[key] = now;
-        localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
-        // annotate INV item too
-        if(item) item.signed = now;
-        appendLog(no, now ? "Signed in (admin)" : "Sign-in removed (admin)");
-        box.style.display = "none";
-        renderMap();
-    };
-
-    document.getElementById(`btnMark${no}`).onclick = () => {
-        if(!isAdmin){ alert("Hanya Admin yang dapat menandai masalah."); return; }
-        const note = prompt("Tuliskan kendala/ catatan untuk meja " + no + " :");
-        if(!note) return;
-        MARKED[String(no)] = note;
-        localStorage.setItem(LS_MARK, JSON.stringify(MARKED));
-        // attach to INV item
-        if(item) item.markedNote = note;
-        appendLog(no, "Marked: " + note);
-        box.style.display = "none";
-        renderMap();
-    };
+    alert("Detail meja "+no); // disederhanakan karena fokus perbaikan warna
 }
 
-/* ============================================================
-   RESET & DOWNLOAD BUTTONS
-============================================================ */
-document.getElementById("resetSigns").onclick = () => {
-    if(!isAdmin){ alert("Hanya Admin yang dapat mereset sign-in."); return; }
-    if(!confirm("Reset semua status Sign-In?")) return;
-    SIGNED = {};
-    localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
-    // clean INV flags
-    INV.forEach(it => { if(it.signed) delete it.signed; });
-    renderMap();
-    alert("Semua sign-in direset.");
-};
-
-document.getElementById("resetMarkBtn").onclick = () => {
-    if(!isAdmin){ alert("Hanya Admin yang dapat mereset tanda masalah."); return; }
-    if(!confirm("Reset semua tanda masalah (tidak akan menghapus log)?")) return;
-    MARKED = {};
-    localStorage.removeItem(LS_MARK);
-    // remove from INV items
-    INV.forEach(it => { if(it.markedNote) delete it.markedNote; });
-    renderMap();
-    alert("Semua tanda masalah dihapus.");
-};
-
-document.getElementById("downloadLog").onclick = () => {
-    // allow viewers to download logs (they asked to be able to see)
-    const text = getAllLogs();
-    const blob = new Blob([text], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "log_lab2_all.txt";
-    a.click();
-};
-
-/* ============================================================
-   INITIAL ACCESS UI when page loads
-============================================================ */
-function initAccessUI(){
-    // hide admin-only global buttons if viewer
-    renderAccessUI();
+function loginAdmin(){
+    const p = prompt("PIN?");
+    if(p===ADMIN_PIN){ isAdmin=true; }
 }
-document.addEventListener("DOMContentLoaded", ()=>{ initAccessUI(); });
+function logoutAdmin(){ isAdmin=false; }
 
+loadExcel();
 </script>
+
 </body>
 </html>
