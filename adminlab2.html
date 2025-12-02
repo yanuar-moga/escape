@@ -4,156 +4,70 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Dashboard Inventaris Lab Komputer 2</title>
-
 <style>
-    body {
-        font-family: 'Calibri', sans-serif;
-        background: #f4f7fb;
-        padding: 20px;
-        margin: 0;
-    }
+    body { font-family: 'Calibri', sans-serif; background:#f4f7fb; padding:20px; margin:0; }
+    .header { background:#0056b3; padding:15px 25px; color:white; font-size:28px; font-weight:bold; border-left:10px solid #ffcc00; width:fit-content; border-radius:5px; }
+    .card-container { display:grid; grid-template-columns:repeat(3,260px); gap:15px; margin-top:20px; }
+    .card { background:white; border-left:6px solid #ffcc00; padding:15px; border-radius:8px; box-shadow:0 3px 6px rgba(0,0,0,0.15); font-size:18px; }
+    .card-title { color:#0056b3; font-weight:bold; }
 
-    .header {
-        background: #0056b3;
-        padding: 15px 25px;
-        color: white;
-        font-size: 28px;
-        font-weight: bold;
-        border-left: 10px solid #ffcc00;
-        width: fit-content;
-        border-radius: 5px;
-    }
+    #mapGrid { display:grid; grid-template-columns:repeat(11,55px); gap:6px; margin-top:30px; margin-bottom:40px; }
+    .meja { width:55px; height:45px; border-radius:6px; font-weight:bold; display:flex; justify-content:center; align-items:center; cursor:pointer; user-select:none; }
+    .normal { background:#28a745; color:white; }
+    .ringan { background:#ffc107; color:black; }
+    .berat  { background:#dc3545; color:white; }
+    .signed { background:#007bff !important; color:white !important; }
+    .marked { background:#7a00ff !important; color:white !important; }
+    .empty  { background:#c4c4c4 !important; color:#555 !important; }
+    .kosong { background:transparent; border:none; cursor:default; }
 
-    .card-container {
-        display: grid;
-        grid-template-columns: repeat(3, 260px);
-        gap: 15px;
-        margin-top: 20px;
-    }
+    #detailBox { background:white; width:360px; padding:18px; border-radius:8px; box-shadow:0 3px 8px rgba(0,0,0,0.2); display:none; position:fixed; right:24px; top:120px; z-index:60; }
+    #detailBox h3 { margin-top:0; color:#0056b3; border-left:6px solid #ffcc00; padding-left:8px; }
 
-    .card {
-        background: white;
-        border-left: 6px solid #ffcc00;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-        font-size: 18px;
-    }
+    .btn { display:inline-block; padding:8px 12px; border-radius:6px; border:1px solid #0056b3; cursor:pointer; background:white; color:#0056b3; font-weight:bold; }
+    .btn-ghost { background:transparent; border:1px solid #ddd; color:#333; }
+    .btn-primary { background:#007bff; color:white; border:none; }
+    .btn-mark { background:#7a00ff; color:white; border:none; }
+    .btn-reset { background:#ff3399; color:white; border:none; }
+    .btn-download { background:#00aa55; color:white; border:none; }
 
-    .card-title {
-        color: #0056b3;
-        font-weight: bold;
-    }
-
-    #mapGrid {
-        display: grid;
-        grid-template-columns: repeat(11, 55px);
-        gap: 6px;
-        margin-top: 30px;
-        margin-bottom: 40px;
-    }
-
-    .meja {
-        width: 55px;
-        height: 45px;
-        border-radius: 6px;
-        font-weight: bold;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .normal   { background: #28a745; color: white; }
-    .ringan   { background: #ffc107; color: black; }
-    .berat    { background: #dc3545; color: white; }
-    .signed   { background: #007bff !important; color: white !important; }
-    .marked   { background: #7a00ff !important; color: white !important; }
-
-    /* ✔️ BARU: meja tanpa inventaris */
-    .empty    { background: #c4c4c4 !important; color: #555 !important; }
-
-    .kosong   { background: transparent; border: none; cursor: default; }
-
-    #detailBox {
-        background: white;
-        width: 360px;
-        padding: 18px;
-        border-radius: 8px;
-        box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-        display: none;
-        position: fixed;
-        right: 24px;
-        top: 120px;
-        z-index: 60;
-    }
-
-    #detailBox h3 {
-        margin-top: 0;
-        color: #0056b3;
-        border-left: 6px solid #ffcc00;
-        padding-left: 8px;
-    }
-
-    .btn {
-        display:inline-block;padding:8px 12px;border-radius:6px;border:1px solid #0056b3;cursor:pointer;
-        background: white;color:#0056b3;font-weight:bold;
-    }
-
-    .btn-ghost { background:transparent;border:1px solid #ddd;color:#333; }
-    .btn-primary { background:#007bff;color:white;border:none; }
-    .btn-mark    { background:#7a00ff;color:white;border:none; }
-    .btn-reset   { background:#ff3399;color:white;border:none; }
-    .btn-download{ background:#00aa55;color:white;border:none; }
-
-    #adminControl {
-        position: fixed;
-        top: 12px;
-        right: 12px;
-        z-index: 9999;
-        display:flex;
-        gap:8px;
-        align-items:center;
-    }
-
-    #btnLogin,#btnLogout {
-        background: #6436ff;
-        color: white;
-        border: none;
-        padding: 10px 14px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 13px;
-        box-shadow: 0 0 8px rgba(0,0,0,0.15);
-    }
+    #adminControl { position:fixed; top:12px; right:12px; z-index:9999; display:flex; gap:8px; align-items:center; }
+    #btnLogin,#btnLogout { background:#6436ff; color:white; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; box-shadow:0 0 8px rgba(0,0,0,0.15); }
     #btnLogout { background:#e91e63; }
 
+    @media (max-width:900px){
+        .card-container { grid-template-columns:repeat(1,1fr); }
+        #mapGrid { grid-template-columns:repeat(6,55px); }
+        #detailBox { position:static; width:auto; margin-top:20px; left:12px; right:12px; }
+    }
 </style>
 </head>
 <body>
 
 <div class="header">📘 Dashboard Inventaris Lab Komputer</div>
 
+<!-- floating admin -->
 <div id="adminControl">
     <button id="btnLogin" onclick="loginAdmin()">Masuk Admin</button>
     <button id="btnLogout" onclick="logoutAdmin()" style="display:none;">Keluar</button>
 </div>
 
+<!-- action -->
 <div style="margin-top:14px;margin-bottom:6px;">
-    <button id="resetSigns" class="btn btn-reset">Reset Semua Sign-In</button>
-    <button id="resetMarkBtn" class="btn btn-reset">Reset Semua Tanda Masalah</button>
-    <button id="downloadLog" class="btn btn-download">Download Log</button>
+    <button id="resetSigns" class="btn btn-reset" title="Reset semua sign-in">Reset Semua Sign-In</button>
+    <button id="resetMarkBtn" class="btn btn-reset" title="Reset semua tanda masalah" style="margin-left:8px;">Reset Semua Tanda Masalah</button>
+    <button id="downloadLog" class="btn btn-download" style="margin-left:8px;">Download Log</button>
 </div>
 
 <div id="dashboard" class="card-container" style="margin-bottom:10px;">
     <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
     <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
     <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
+
     <div class="card"><div class="card-title">Perangkat Normal</div><span id="normalCount">-</span></div>
     <div class="card"><div class="card-title">Rusak Ringan</div><span id="ringanCount">-</span></div>
     <div class="card"><div class="card-title">Rusak Berat</div><span id="beratCount">-</span></div>
+
     <div class="card"><div class="card-title">Kebutuhan Mouse</div><span id="mouseNeed">-</span></div>
     <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
 </div>
@@ -164,24 +78,18 @@
 
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 <script>
-/* ======================= CONFIG ======================= */
+/* CONFIG */
 const ADMIN_PIN = "17081945";
 let isAdmin = false;
 
-/* wifi & belajar data */
-const WIFI = {};
-for(let i=1;i<=36;i++){ WIFI[i] = { user: `${i}lab2`, pass: String(i) }; }
-
+/* WIFI & CHROME accounts */
+const WIFI = {}; for(let i=1;i<=36;i++){ WIFI[i]={user:`${i}lab2`, pass:String(i)};}
 const CHROME_ACCOUNTS = [
-    "putri.wika67@smp.belajar.id","kallista.putri192@smp.belajar.id",
-    "yulia.al83@smp.belajar.id","nazril.hidayatullah18@smp.belajar.id",
-    "muhammad.febri1219@smp.belajar.id","muhamad.rizkan48@smp.belajar.id",
-    "safania.52@smp.belajar.id","nia.hidayati013@smp.belajar.id",
-    "nayilla_azzahra25@smp.belajar.id","widya.setya31@smp.belajar.id",
-    "yusuf.fahreza18@smp.belajar.id","muhamad.arif3591@smp.belajar.id",
-    "muhamad.faiz3380@smp.belajar.id","muhammad.khairul8017@smp.belajar.id",
-    "aisyatul.maulida49@smp.belajar.id"
-];
+"putri.wika67@smp.belajar.id","kallista.putri192@smp.belajar.id","yulia.al83@smp.belajar.id",
+"nazril.hidayatullah18@smp.belajar.id","muhammad.febri1219@smp.belajar.id","muhamad.rizkan48@smp.belajar.id",
+"safania.52@smp.belajar.id","nia.hidayati013@smp.belajar.id","nayilla_azzahra25@smp.belajar.id",
+"widya.setya31@smp.belajar.id","yusuf.fahreza18@smp.belajar.id","muhamad.arif3591@smp.belajar.id",
+"muhamad.faiz3380@smp.belajar.id","muhammad.khairul8017@smp.belajar.id","aisyatul.maulida49@smp.belajar.id"];
 const CHROME_PASS = "Belajar2025!";
 
 /* localStorage keys */
@@ -194,50 +102,103 @@ let MARKED = JSON.parse(localStorage.getItem(LS_MARK) || "{}");
 
 function todayKey(){ return LS_LOG_PREF + new Date().toISOString().split("T")[0]; }
 
-/* ======================= EXCEL LOAD ======================= */
-let INV = [];
-
-async function loadExcel(){
-    try {
-        const res = await fetch("assets/inventarislab2.xlsx");
-        const buf = await res.arrayBuffer();
-        const wb = XLSX.read(buf, { type:"array" });
-        INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
-    } catch {}
-
-    renderMap();
+/* helper: append to localStorage daily log */
+function appendLocalLog(meja, text){
+    const key = todayKey();
+    const waktu = new Date().toLocaleString("id-ID");
+    const prev = localStorage.getItem(key) || "";
+    localStorage.setItem(key, prev + `${waktu} | Meja ${meja} | ${text}\n`);
 }
 
-/* ======================= MAP RENDER ======================= */
+/* helper: try save to server (saveLog.php) — best effort */
+async function saveLogToServer(meja, text){
+    try{
+        const form = new FormData();
+        form.append("meja", meja);
+        form.append("text", text);
+        const res = await fetch("saveLog.php", { method:"POST", body: form });
+        // server should return JSON { ok:true } or similar — we don't require it
+        return res.ok;
+    }catch(e){
+        return false;
+    }
+}
+
+/* combine local logs */
+function getAllLocalLogs(){
+    let out = "";
+    const keys = [];
+    for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k.startsWith(LS_LOG_PREF)) keys.push(k);
+    }
+    keys.sort();
+    keys.forEach(k => {
+        out += "=== " + k.replace(LS_LOG_PREF,"Tanggal: ") + " ===\n";
+        out += (localStorage.getItem(k) || "") + "\n";
+    });
+    return out || "Belum ada log...";
+}
+
+/* load excel */
+let INV = [];
+async function loadExcel(){
+    try{
+        const res = await fetch("assets/inventarislab2.xlsx");
+        if(!res.ok) throw new Error("no excel");
+        const buf = await res.arrayBuffer();
+        const wb = XLSX.read(buf, { type:"array" });
+        INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"] || wb.Sheets[wb.SheetNames[0]]);
+        // apply stored SIGNED/MARKED
+        INV.forEach(it=>{
+            const no = String(it["NO MEJA"] ?? it["No Meja"] ?? it["NO_MEJA"] ?? "").trim();
+            if(no){
+                if(SIGNED[no]) it.signed = true;
+                if(MARKED[no]) it.markedNote = MARKED[no];
+            }
+        });
+    }catch(e){
+        // ignore, will render empty seats as empty
+        INV = INV || [];
+    }
+    updateDashboard();
+    renderMap();
+}
+loadExcel();
+
+/* update dashboard counts */
+function updateDashboard(){
+    const win = INV.filter(x=> (x.OS||"").toLowerCase().includes("windows"));
+    const chrome = INV.filter(x=> (x.OS||"").toLowerCase().includes("chrome"));
+    document.getElementById("totalPerangkat").innerText = (win.length + chrome.length) || 0;
+    document.getElementById("totalWindows").innerText = win.length || 0;
+    document.getElementById("totalChromebook").innerText = chrome.length || 0;
+    document.getElementById("normalCount").innerText = INV.filter(x=> (x.Kondisi||"").toLowerCase()==="normal").length;
+    document.getElementById("ringanCount").innerText = INV.filter(x=> (x.Kondisi||"").toLowerCase().includes("ringan")).length;
+    document.getElementById("beratCount").innerText = INV.filter(x=> (x.Kondisi||"").toLowerCase().includes("berat")).length;
+    document.getElementById("mouseNeed").innerText = INV.filter(x=> (x.Mouse||"").toLowerCase()==="tidak").length;
+    document.getElementById("keyboardNeed").innerText = INV.filter(x=> (x.Keyboard||"").toLowerCase()==="tidak").length;
+}
+
+/* render map */
 function renderMap(){
     const grid = document.getElementById("mapGrid");
     grid.innerHTML = "";
-
     const rows = [
         [22,21,20,19,18,17,"",4,3,2,1],
         [28,27,26,25,24,23,"",8,7,6,5],
         [34,33,32,31,30,29,"",12,11,10,9],
         [40,39,38,37,36,35,"",16,15,14,13]
     ];
-
     rows.forEach(r=>{
         r.forEach(no=>{
-            const div = document.createElement("div");
-
-            if(no === ""){
-                div.className = "meja kosong";
-                grid.appendChild(div);
-                return;
-            }
-
-            const item = INV.find(x => String(x["NO MEJA"]).trim() === String(no).trim());
-
+            const d = document.createElement("div");
+            if(no === "") { d.className = "meja kosong"; grid.appendChild(d); return; }
+            const item = INV.find(x=> String(x["NO MEJA"] ?? x["No Meja"] ?? "").trim() === String(no).trim());
             let cls;
-
             if(item){
-                /* normal kondisi */
                 if(MARKED[String(no)]) cls = "marked";
-                else if(SIGNED[String(no)]) cls = "signed";
+                else if(SIGNED[String(no)] || item.signed) cls = "signed";
                 else {
                     const k = (item.Kondisi||"").toLowerCase();
                     if(k==="normal") cls="normal";
@@ -246,31 +207,160 @@ function renderMap(){
                     else cls="normal";
                 }
             } else {
-                /* ✔️ BARU: meja tanpa data inventaris */
                 cls = "empty";
             }
-
-            div.className = "meja "+cls;
-            div.textContent = no;
-            div.onclick = ()=> showDetail(no);
-            grid.appendChild(div);
+            d.className = "meja " + cls;
+            d.textContent = no;
+            d.onclick = ()=> showDetail(no);
+            grid.appendChild(d);
         });
     });
+    renderAccessUI();
 }
 
-/* ======================= DETAIL & ADMIN ======================= */
-function showDetail(no){
-    alert("Detail meja "+no); // disederhanakan karena fokus perbaikan warna
+/* ACCESS UI */
+function renderAccessUI(){
+    document.getElementById("btnLogin").style.display = isAdmin ? "none" : "inline-block";
+    document.getElementById("btnLogout").style.display = isAdmin ? "inline-block" : "none";
+    document.querySelectorAll("#resetSigns, #resetMarkBtn").forEach(b=> b.style.display = isAdmin ? "inline-block" : "none");
+    // detail buttons (if exist)
+    document.querySelectorAll(".btn-sign, .btn-mark").forEach(b=> b.style.display = isAdmin ? "inline-block" : "none");
 }
 
+/* login/logout */
 function loginAdmin(){
-    const p = prompt("PIN?");
-    if(p===ADMIN_PIN){ isAdmin=true; }
+    const p = prompt("Masukkan PIN Admin:");
+    if(p===ADMIN_PIN){ isAdmin=true; alert("Masuk sebagai ADMIN"); renderAccessUI(); } else alert("PIN salah");
 }
-function logoutAdmin(){ isAdmin=false; }
+function logoutAdmin(){ isAdmin=false; alert("Mode viewer aktif"); renderAccessUI(); }
 
-loadExcel();
+/* show detail */
+function showDetail(no){
+    const box = document.getElementById("detailBox");
+    const item = INV.find(x=> String(x["NO MEJA"] ?? x["No Meja"] ?? "").trim() === String(no).trim());
+    box.style.display = "block";
+    if(!item){
+        box.innerHTML = `<h3>Meja ${no}</h3><div class="small">Data inventaris tidak ditemukan untuk meja ini.</div><div style="margin-top:12px;"><button id="btnClose" class="btn btn-ghost">Tutup</button></div>`;
+        document.getElementById("btnClose").onclick = ()=> box.style.display='none';
+        renderAccessUI();
+        return;
+    }
+    const wifi = WIFI[no] || {user:"-", pass:"-"};
+    const isChrome = ((item.OS||"").toLowerCase().includes("chrome") || (item.OS||"").toLowerCase().includes("chromebook"));
+    const belajarUser = isChrome ? (CHROME_ACCOUNTS[(no-1) % CHROME_ACCOUNTS.length] || "-") : "-";
+    const markedNote = MARKED[String(no)] || item.markedNote || "-";
+    const signedNow = !!(SIGNED[String(no)] || item.signed);
+    box.innerHTML = `
+        <h3>Detail Meja ${no}</h3>
+        <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
+        <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
+        <b>Processor:</b> ${item["Processor"] || "-"}<br>
+        <b>RAM:</b> ${item["RAM"] || "-"}<br>
+        <b>Storage:</b> ${item["Storage"] || "-"}<br>
+        <b>Layar:</b> ${item["Layar"] || "-"}<br>
+        <b>OS:</b> ${item["OS"] || "-"}<br>
+        <b>Kondisi:</b> ${item["Kondisi"] || "-"}<br><br>
+
+        <div class="small"><b>Akun WiFi (LAB 2)</b></div>
+        <b>Username:</b> ${wifi.user}<br>
+        <b>Password:</b> ${wifi.pass}<br><br>
+
+        <div class="small"><b>Akun Belajar.ID</b></div>
+        <b>Email:</b> ${isChrome ? belajarUser : "-"}<br>
+        <b>Password:</b> ${isChrome ? CHROME_PASS : "-"}<br><br>
+
+        <b>Status Signed:</b> ${signedNow ? "Sudah" : "Belum"}<br>
+        <b>Catatan Mark:</b> ${markedNote}<br>
+
+        <div style="margin-top:12px;">
+            <button id="btnSign${no}" class="btn btn-primary btn-sign" style="margin-right:8px;">${signedNow ? "✔ Tandai Ulang Sign-In" : "✔ Tandai Sudah Sign-In"}</button>
+            <button id="btnMark${no}" class="btn btn-mark" style="margin-right:8px;">🚩 Tandai Masalah</button>
+            <button id="btnClose" class="btn btn-ghost">Tutup</button>
+        </div>
+    `;
+    renderAccessUI();
+    document.getElementById("btnClose").onclick = ()=> box.style.display='none';
+
+    document.getElementById(`btnSign${no}`).onclick = async ()=>{
+        if(!isAdmin){ alert("Hanya Admin yang dapat mengubah status sign-in."); return; }
+        const key = String(no);
+        const now = !SIGNED[key];
+        SIGNED[key] = now;
+        localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
+        if(item) item.signed = now;
+        const msg = now ? "Signed in (admin)" : "Sign-in removed (admin)";
+        appendLocalLog(no, msg);
+        await saveLogToServer(no, msg); // best-effort
+        box.style.display='none';
+        renderMap();
+    };
+
+    document.getElementById(`btnMark${no}`).onclick = async ()=>{
+        if(!isAdmin){ alert("Hanya Admin yang dapat menandai masalah."); return; }
+        const note = prompt("Tuliskan kendala / catatan untuk meja " + no + " :");
+        if(!note) return;
+        MARKED[String(no)] = note;
+        localStorage.setItem(LS_MARK, JSON.stringify(MARKED));
+        if(item) item.markedNote = note;
+        const msg = "Marked: " + note;
+        appendLocalLog(no, msg);
+        await saveLogToServer(no, msg);
+        box.style.display='none';
+        renderMap();
+    };
+}
+
+/* RESET & DOWNLOAD */
+document.getElementById("resetSigns").onclick = ()=>{
+    if(!isAdmin){ alert("Hanya Admin yang dapat mereset sign-in."); return; }
+    if(!confirm("Reset semua status Sign-In?")) return;
+    SIGNED = {};
+    localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
+    INV.forEach(it=>{ if(it.signed) delete it.signed; });
+    renderMap(); alert("Semua sign-in direset.");
+};
+document.getElementById("resetMarkBtn").onclick = ()=>{
+    if(!isAdmin){ alert("Hanya Admin yang dapat mereset tanda masalah."); return; }
+    if(!confirm("Reset semua tanda masalah (tidak akan menghapus log)?")) return;
+    MARKED = {}; localStorage.removeItem(LS_MARK); INV.forEach(it=>{ if(it.markedNote) delete it.markedNote; });
+    renderMap(); alert("Semua tanda masalah dihapus.");
+};
+
+/* DOWNLOAD: try server file for today, fallback to local logs */
+document.getElementById("downloadLog").onclick = async ()=>{
+    const today = new Date().toISOString().split("T")[0];
+    const serverPath = `logs/log-${today}.txt`;
+    try{
+        const res = await fetch(serverPath);
+        if(res.ok){
+            const text = await res.text();
+            const blob = new Blob([text], {type:"text/plain"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `log-${today}.txt`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            return;
+        }
+    }catch(e){ /* ignore and fallback */ }
+
+    // fallback combine local logs
+    const combined = getAllLocalLogs();
+    const blob = new Blob([combined], {type:"text/plain"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `log-local-all.txt`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+};
+
+/* initial */
+function init(){
+    renderAccessUI();
+    updateDashboard();
+    renderMap();
+}
+document.addEventListener("DOMContentLoaded", init);
 </script>
-
 </body>
 </html>
