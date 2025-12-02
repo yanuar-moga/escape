@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Dashboard Inventaris Lab Komputer 2</title>
-
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
         body {
             font-family: 'Calibri', sans-serif;
@@ -64,6 +64,7 @@
             justify-content: center;
             align-items: center;
             cursor: pointer;
+            user-select: none;
         }
 
         .normal { background: #28a745; color: white; }
@@ -85,6 +86,10 @@
             border-radius: 8px;
             box-shadow: 0 3px 8px rgba(0,0,0,0.2);
             display: none;
+            position: fixed;
+            right: 24px;
+            top: 120px;
+            z-index: 60;
         }
 
         #detailBox h3 {
@@ -94,6 +99,20 @@
             padding-left: 8px;
         }
 
+        /* small helper */
+        .muted { color: #666; font-size: 13px; }
+        .small { font-size: 13px; }
+        .btn {
+            display:inline-block;padding:8px 12px;border-radius:6px;border:none;cursor:pointer;
+        }
+        .btn-primary { background:#007bff;color:#fff; }
+        .btn-ghost { background:transparent;border:1px solid #ddd;color:#333; }
+
+        @media (max-width: 900px) {
+            .card-container { grid-template-columns: repeat(1, 1fr); }
+            #mapGrid { grid-template-columns: repeat(6, 55px); }
+            #detailBox { position: static; width: auto; margin-top: 20px; }
+        }
     </style>
 </head>
 <body>
@@ -101,7 +120,7 @@
 <div class="header">📘 Dashboard Inventaris Lab Komputer</div>
 
 <!-- DASHBOARD -->
-<div id="dashboard" class="card-container">
+<div id="dashboard" class="card-container" style="margin-bottom:10px;">
     <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
     <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
     <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
@@ -114,33 +133,44 @@
     <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
 </div>
 
-<h2 style="color:#0056b3;margin-top:35px;">📍 Peta Meja Lab dan Letak Laptop</h2>
+<div style="display:flex;gap:12px;align-items:center;">
+    <h2 style="color:#0056b3;margin:0 0 8px 0;">📍 Peta Meja Lab dan Letak Laptop</h2>
+    <div style="margin-left:auto;">
+        <button id="resetSigns" class="btn btn-ghost small">Reset Semua Sign-In</button>
+    </div>
+</div>
 
 <div id="mapGrid"></div>
 
 <div id="detailBox"></div>
 
+<!-- xlsx -->
 <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+
 <script>
+/*
+  Final script:
+  - mapping wifi accounts for meja 1..36 (user: "Nlab2", pass: "N")
+  - chromeAccounts (15 entries) untuk chromebook seats
+  - showDetail shows WiFi account (top) and belajar.id account if chromebook
+  - sign-in toggle stored to localStorage key "lab2_signed"
+  - expects assets/inventarislab2.xlsx with sheet "INV"
+*/
 
 let INV = [];
+const LS_KEY = "lab2_signed";
 
 /* ==============================
-       DATA LOGIN WIFI LAB 2
+   DATA WIFI (LAB 2) 1..36
    ============================== */
-
 const wifiLab2 = {};
 for (let i = 1; i <= 36; i++) {
-    wifiLab2[i] = {
-        user: `${i}lab2`,
-        pass: `${i}`
-    };
+    wifiLab2[i] = { user: `${i}lab2`, pass: `${i}` };
 }
 
 /* ==============================
-       AKUN BELAJAR CHROMEBOOK
+   AKUN BELAJAR.ID CHROMEBOOK (1..15)
    ============================== */
-
 const chromeAccounts = [
     { user:"putri.wika67@smp.belajar.id" , pass:"Belajar2025!" },
     { user:"kallista.putri192@smp.belajar.id" , pass:"Belajar2025!" },
@@ -160,46 +190,73 @@ const chromeAccounts = [
 ];
 
 /* ==============================
-        FUNGSI LOGIN OTAOMATIS
+   Utility LocalStorage for sign-ins
    ============================== */
+function loadSignedFromLS() {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (!raw) return {};
+        return JSON.parse(raw);
+    } catch(e) { return {}; }
+}
+function saveSignedToLS(obj) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch(e){}
+}
+let SIGNED = loadSignedFromLS(); // object { "1": true, "2": true, ... }
 
+/* ==============================
+   Mapping login info
+   returns { wifi: {user,pass}, belajar: {user,pass} | null }
+   ============================== */
 function getLogin(no, item) {
-    const os = (item.OS || "").toLowerCase();
+    const wifi = wifiLab2[Number(no)] || { user:"-", pass:"-" };
 
-    if (os.includes("windows")) {
-        return wifiLab2[no] || { user:"-", pass:"-" };
-    }
-
+    let belajar = null;
+    const os = (item?.OS || "").toLowerCase();
     if (os.includes("chromebook")) {
-        let idx = (no - 1) % chromeAccounts.length;
-        return chromeAccounts[idx];
+        // Map chromebook index to chromeAccounts 0..14
+        // We'll attempt to map by sequence of chromebook seats (stable).
+        // Simpler: use (no - 1) % chromeAccounts.length to pick an account,
+        // but if you want specific mapping, adjust here.
+        let idx = (Number(no) - 1) % chromeAccounts.length;
+        belajar = chromeAccounts[idx];
     }
 
-    return { user:"-", pass:"-" };
+    return { wifi, belajar };
 }
 
 /* ==============================
-       LOAD EXCEL INVENTARIS
+   Load Excel (sheet "INV")
    ============================== */
-
 async function loadExcel() {
-    const res = await fetch("assets/inventarislab2.xlsx");
-    const buf = await res.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
+    try {
+        const res = await fetch("assets/inventarislab2.xlsx");
+        if (!res.ok) throw new Error("Tidak dapat load file inventarislab2.xlsx");
+        const buf = await res.arrayBuffer();
+        const wb = XLSX.read(buf, { type: "array" });
+        INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"] || wb.Sheets[wb.SheetNames[0]]);
 
-    INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"]);
+        // apply SIGNED state from localStorage to INV items if matching NO MEJA
+        if (INV && INV.length) {
+            INV.forEach(item => {
+                const no = String(item["NO MEJA"] || item["No Meja"] || item["NO_MEJA"] || "").trim();
+                if (no && SIGNED[no]) item.signed = true;
+            });
+        }
 
-    updateDashboard();
-    renderMap();
+        updateDashboard();
+        renderMap();
+    } catch (err) {
+        console.error(err);
+        alert("Gagal memuat inventarislab2.xlsx. Pastikan file ada di folder assets dan bernama inventarislab2.xlsx.");
+    }
 }
 loadExcel();
 
 /* ==============================
-            DASHBOARD
+   Dashboard updates
    ============================== */
-
 function updateDashboard() {
-
     const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
     const chrome = INV.filter(x => (x.OS || "").toLowerCase() === "chromebook");
 
@@ -210,22 +267,21 @@ function updateDashboard() {
     const needMouse    = INV.filter(x => (x.Mouse || "").toLowerCase() === "tidak");
     const needKeyboard = INV.filter(x => (x.Keyboard || "").toLowerCase() === "tidak");
 
-    document.getElementById("totalPerangkat").innerText = win.length + chrome.length;
-    document.getElementById("totalWindows").innerText = win.length;
-    document.getElementById("totalChromebook").innerText = chrome.length;
+    document.getElementById("totalPerangkat").innerText = (win.length + chrome.length) || 0;
+    document.getElementById("totalWindows").innerText = win.length || 0;
+    document.getElementById("totalChromebook").innerText = chrome.length || 0;
 
-    document.getElementById("normalCount").innerText = normal.length;
-    document.getElementById("ringanCount").innerText = ringan.length;
-    document.getElementById("beratCount").innerText = berat.length;
+    document.getElementById("normalCount").innerText = normal.length || 0;
+    document.getElementById("ringanCount").innerText = ringan.length || 0;
+    document.getElementById("beratCount").innerText = berat.length || 0;
 
-    document.getElementById("mouseNeed").innerText = needMouse.length;
-    document.getElementById("keyboardNeed").innerText = needKeyboard.length;
+    document.getElementById("mouseNeed").innerText = needMouse.length || 0;
+    document.getElementById("keyboardNeed").innerText = needKeyboard.length || 0;
 }
 
 /* ==============================
-            RENDER MAP
+   Render map grid
    ============================== */
-
 function renderMap() {
     const grid = document.getElementById("mapGrid");
     grid.innerHTML = "";
@@ -239,7 +295,6 @@ function renderMap() {
 
     rows.forEach(r => {
         r.forEach(mejaNum => {
-
             const div = document.createElement("div");
 
             if (mejaNum === "") {
@@ -248,11 +303,15 @@ function renderMap() {
                 return;
             }
 
-            const item = INV.find(x => Number(x["NO MEJA"]) === Number(mejaNum));
+            const item = INV.find(x => {
+                // be permissive with column name
+                const val = x["NO MEJA"] ?? x["No Meja"] ?? x["NO_MEJA"] ?? x["NO_MEJA"];
+                return Number(val) === Number(mejaNum);
+            });
 
             let kondisiClass = "kosong";
             if (item) {
-                if (item.signed) {
+                if (item.signed || SIGNED[String(mejaNum)]) {
                     kondisiClass = "signed";
                 } else {
                     let k = (item.Kondisi || "").toLowerCase();
@@ -266,6 +325,10 @@ function renderMap() {
             div.textContent = mejaNum;
 
             if (item) div.onclick = () => showDetail(mejaNum);
+            else {
+                // still allow empty-seat info popup if wanted
+                div.onclick = null;
+            }
 
             grid.appendChild(div);
         });
@@ -273,48 +336,110 @@ function renderMap() {
 }
 
 /* ==============================
-       DETAIL + LOGIN POPUP
+   Show detail popup (WiFi + Belajar)
    ============================== */
-
 function showDetail(no) {
     const box = document.getElementById("detailBox");
-    const item = INV.find(x => String(x["NO MEJA"]) === String(no));
+    const item = INV.find(x => {
+        const val = x["NO MEJA"] ?? x["No Meja"] ?? x["NO_MEJA"];
+        return String(val).trim() === String(no).trim();
+    });
 
     box.style.display = "block";
 
     if (!item) {
-        box.innerHTML = `<h3>Detail Meja ${no}</h3>Data tidak ditemukan`;
+        box.innerHTML = `<h3>Detail Meja ${no}</h3><div class="muted">Data tidak ditemukan pada sheet INV</div>`;
         return;
     }
 
     const login = getLogin(no, item);
+
+    // mark whether this seat currently signed (from item or SIGNED LS)
+    const isSigned = !!(item.signed || SIGNED[String(no)]);
+
+    let belajarHtml = "";
+    if (login.belajar) {
+        belajarHtml = `
+            <hr>
+            <div class="small"><b>Akun Belajar.id (disarankan untuk Chromebook)</b></div>
+            <b>Email:</b> ${login.belajar.user}<br>
+            <b>Password:</b> ${login.belajar.pass}<br>
+        `;
+    } else {
+        belajarHtml = `
+            <hr>
+            <div class="small muted">Tidak ada akun belajar.id untuk perangkat ini.</div>
+        `;
+    }
 
     box.innerHTML = `
         <h3>Detail Meja ${no}</h3>
 
         <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
         <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
+        <b>Processor:</b> ${item["Processor"] || "-"}<br>
+        <b>RAM:</b> ${item["RAM"] || "-"}<br>
+        <b>Storage:</b> ${item["Storage"] || "-"}<br>
+        <b>Layar:</b> ${item["Layar"] || "-"}<br>
         <b>OS:</b> ${item["OS"] || "-"}<br><br>
 
-        <b>Username:</b> ${login.user}<br>
-        <b>Password:</b> ${login.pass}<br><br>
+        <div class="small"><b>Akun WiFi (LAB 2)</b></div>
+        <b>Username:</b> ${login.wifi.user}<br>
+        <b>Password:</b> ${login.wifi.pass}<br>
 
-        <button id="btnSign${no}" style="
-            background:#007bff;color:white;
-            padding:8px 12px;border:none;border-radius:5px;
-            cursor:pointer;margin-top:10px;">
-            ✔ Tandai Sudah Sign-In
-        </button>
+        ${belajarHtml}
+
+        <div style="margin-top:10px;">
+            <button id="btnSign${no}" class="btn btn-primary">
+                ${isSigned ? "✔ Sudah Sign-In (Tandai Ulang)" : "✔ Tandai Sudah Sign-In"}
+            </button>
+            <button id="btnClose" class="btn btn-ghost" style="margin-left:8px;">Tutup</button>
+        </div>
     `;
 
     document.getElementById(`btnSign${no}`).onclick = () => {
-        item.signed = true;
+        // toggle signed state
+        const key = String(no);
+        const nowSigned = !SIGNED[key];
+        SIGNED[key] = nowSigned;
+        // also apply to INV so UI updates immediately
+        item.signed = nowSigned;
+        saveSignedToLS(SIGNED);
         renderMap();
+        // close popup
+        box.style.display = "none";
+    };
+
+    document.getElementById("btnClose").onclick = () => {
         box.style.display = "none";
     };
 }
 
-</script>
+/* ==============================
+   Reset sign-ins button
+   ============================== */
+document.getElementById("resetSigns").onclick = () => {
+    if (!confirm("Reset semua tanda 'Sudah Sign-In'?")) return;
+    SIGNED = {};
+    saveSignedToLS(SIGNED);
+    // remove signed flag from INV items too
+    INV.forEach(it => { if (it.signed) delete it.signed; });
+    renderMap();
+};
 
+/* ==============================
+   Helper: save SIGNED
+   ============================== */
+function saveSignedToLS(obj) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch (e) { console.warn(e); }
+}
+
+/* ==============================
+   If you want to debug
+   ============================== */
+window.debugINV = () => INV;
+window.debugSIGNED = () => SIGNED;
+
+</script>
 </body>
 </html>
