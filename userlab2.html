@@ -1,445 +1,179 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <title>Dashboard Inventaris Lab Komputer 2</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <style>
-        body {
-            font-family: 'Calibri', sans-serif;
-            background: #f4f7fb;
-            padding: 20px;
-            margin: 0;
-        }
+<meta charset="UTF-8">
+<title>Panel Chromebook Lab 2</title>
 
-        /* HEADER */
-        .header {
-            background: #0056b3;
-            padding: 15px 25px;
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
-            border-left: 10px solid #ffcc00;
-            width: fit-content;
-            border-radius: 5px;
-        }
-
-        /* DASHBOARD CARDS */
-        .card-container {
-            display: grid;
-            grid-template-columns: repeat(3, 260px);
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .card {
-            background: white;
-            border-left: 6px solid #ffcc00;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-            font-size: 18px;
-        }
-
-        .card-title {
-            color: #0056b3;
-            font-weight: bold;
-        }
-
-        /* MAP GRID */
-        #mapGrid {
-            display: grid;
-            grid-template-columns: repeat(11, 55px);
-            gap: 6px;
-            margin-top: 30px;
-            margin-bottom: 40px;
-        }
-
-        .meja {
-            width: 55px;
-            height: 45px;
-            border-radius: 6px;
-            font-weight: bold;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .normal { background: #28a745; color: white; }
-        .ringan { background: #ffc107; color: black; }
-        .berat { background: #dc3545; color: white; }
-        .kosong { background: transparent; border: none; cursor: default; }
-
-        /* SIGNED / LOGIN DONE */
-        .signed {
-            background: #007bff !important;
-            color: white !important;
-        }
-
-        /* POPUP DETAIL */
-        #detailBox {
-            background: white;
-            width: 360px;
-            padding: 18px;
-            border-radius: 8px;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-            display: none;
-            position: fixed;
-            right: 24px;
-            top: 120px;
-            z-index: 60;
-        }
-
-        #detailBox h3 {
-            margin-top: 0;
-            color: #0056b3;
-            border-left: 6px solid #ffcc00;
-            padding-left: 8px;
-        }
-
-        /* small helper */
-        .muted { color: #666; font-size: 13px; }
-        .small { font-size: 13px; }
-        .btn {
-            display:inline-block;padding:8px 12px;border-radius:6px;border:none;cursor:pointer;
-        }
-        .btn-primary { background:#007bff;color:#fff; }
-        .btn-ghost { background:transparent;border:1px solid #ddd;color:#333; }
-
-        @media (max-width: 900px) {
-            .card-container { grid-template-columns: repeat(1, 1fr); }
-            #mapGrid { grid-template-columns: repeat(6, 55px); }
-            #detailBox { position: static; width: auto; margin-top: 20px; }
-        }
-    </style>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background:#222;
+        color:#fff;
+    }
+    h1 {
+        text-align:center;
+        margin-bottom:20px;
+    }
+    .grid {
+        display:grid;
+        grid-template-columns:repeat(6,1fr);
+        gap:12px;
+        padding:20px;
+    }
+    .card {
+        background:#333;
+        border-radius:10px;
+        padding:15px;
+        border:2px solid #444;
+    }
+    .card.marked {
+        background:purple;
+        border:2px solid #fff;
+    }
+    .btn {
+        background:#0099ff;
+        color:#fff;
+        border:none;
+        width:100%;
+        padding:6px;
+        border-radius:6px;
+        margin-top:10px;
+        cursor:pointer;
+    }
+    .btn:hover {
+        background:#0077cc;
+    }
+    #logButton {
+        margin:20px;
+        padding:10px;
+        background:#00cc66;
+        color:#fff;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+    }
+</style>
 </head>
+
 <body>
 
-<div class="header">📘 Dashboard Inventaris Lab Komputer</div>
+<h1>Panel Chromebook Lab 2</h1>
 
-<!-- DASHBOARD -->
-<div id="dashboard" class="card-container" style="margin-bottom:10px;">
-    <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
-    <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
-    <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
+<div class="grid" id="grid"></div>
 
-    <div class="card"><div class="card-title">Perangkat Normal</div><span id="normalCount">-</span></div>
-    <div class="card"><div class="card-title">Rusak Ringan</div><span id="ringanCount">-</span></div>
-    <div class="card"><div class="card-title">Rusak Berat</div><span id="beratCount">-</span></div>
-
-    <div class="card"><div class="card-title">Kebutuhan Mouse</div><span id="mouseNeed">-</span></div>
-    <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
-</div>
-
-<div style="display:flex;gap:12px;align-items:center;">
-    <h2 style="color:#0056b3;margin:0 0 8px 0;">📍 Peta Meja Lab dan Letak Laptop</h2>
-    <div style="margin-left:auto;">
-        <button id="resetSigns" class="btn btn-ghost small">Reset Semua Sign-In</button>
-    </div>
-</div>
-
-<div id="mapGrid"></div>
-
-<div id="detailBox"></div>
-
-<!-- xlsx -->
-<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+<button id="logButton" onclick="downloadLog()">Download log.txt</button>
 
 <script>
-/*
-  Final script:
-  - mapping wifi accounts for meja 1..36 (user: "Nlab2", pass: "N")
-  - chromeAccounts (15 entries) untuk chromebook seats
-  - showDetail shows WiFi account (top) and belajar.id account if chromebook
-  - sign-in toggle stored to localStorage key "lab2_signed"
-  - expects assets/inventarislab2.xlsx with sheet "INV"
-*/
+/* =============================
+   DATABASE DATA
+============================= */
 
-let INV = [];
-const LS_KEY = "lab2_signed";
-
-/* ==============================
-   DATA WIFI (LAB 2) 1..36
-   ============================== */
-const wifiLab2 = {};
-for (let i = 1; i <= 36; i++) {
-    wifiLab2[i] = { user: `${i}lab2`, pass: `${i}` };
+// Wifi data 1–36
+const wifi = [];
+for(let i=1;i<=36;i++){
+    wifi.push({
+        user: i+"lab2",
+        pass: i
+    });
 }
 
-/* ==============================
-   AKUN BELAJAR.ID CHROMEBOOK (1..15)
-   ============================== */
-const chromeAccounts = [
-    { user:"putri.wika67@smp.belajar.id" , pass:"Belajar2025!" },
-    { user:"kallista.putri192@smp.belajar.id" , pass:"Belajar2025!" },
-    { user:"yulia.al83@smp.belajar.id" , pass:"Belajar2025!" },
-    { user:"nazril.hidayatullah18@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"muhammad.febri1219@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"muhamad.rizkan48@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"safania.52@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"nia.hidayati013@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"nayilla_azzahra25@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"widya.setya31@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"yusuf.fahreza18@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"muhamad.arif3591@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"muhamad.faiz3380@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"muhammad.khairul8017@smp.belajar.id", pass:"Belajar2025!" },
-    { user:"aisyatul.maulida49@smp.belajar.id", pass:"Belajar2025!" }
+// Akun belajar data (1–15 diberikan)
+const belajar = [
+"putri.wika67@smp.belajar.id",
+"kallista.putri192@smp.belajar.id",
+"yulia.al83@smp.belajar.id",
+"nazril.hidayatullah18@smp.belajar.id",
+"muhammad.febri1219@smp.belajar.id",
+"muhamad.rizkan48@smp.belajar.id",
+"safania.52@smp.belajar.id",
+"nia.hidayati013@smp.belajar.id",
+"nayilla_azzahra25@smp.belajar.id",
+"widya.setya31@smp.belajar.id",
+"yusuf.fahreza18@smp.belajar.id",
+"muhamad.arif3591@smp.belajar.id",
+"muhamad.faiz3380@smp.belajar.id",
+"muhammad.khairul8017@smp.belajar.id",
+"aisyatul.maulida49@smp.belajar.id"
 ];
 
-/* ==============================
-   Utility LocalStorage for sign-ins
-   ============================== */
-function loadSignedFromLS() {
-    try {
-        const raw = localStorage.getItem(LS_KEY);
-        if (!raw) return {};
-        return JSON.parse(raw);
-    } catch(e) { return {}; }
-}
-function saveSignedToLS(obj) {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch(e){}
-}
-let SIGNED = loadSignedFromLS(); // object { "1": true, "2": true, ... }
-
-/* ==============================
-   Mapping login info
-   returns { wifi: {user,pass}, belajar: {user,pass} | null }
-   ============================== */
-function getLogin(no, item) {
-    const wifi = wifiLab2[Number(no)] || { user:"-", pass:"-" };
-
-    let belajar = null;
-    const os = (item?.OS || "").toLowerCase();
-    if (os.includes("chromebook")) {
-        // Map chromebook index to chromeAccounts 0..14
-        // We'll attempt to map by sequence of chromebook seats (stable).
-        // Simpler: use (no - 1) % chromeAccounts.length to pick an account,
-        // but if you want specific mapping, adjust here.
-        let idx = (Number(no) - 1) % chromeAccounts.length;
-        belajar = chromeAccounts[idx];
-    }
-
-    return { wifi, belajar };
+/* buat 16–36 kosong */
+for(let i=15;i<36;i++){
+    belajar.push("(belum ada)");
 }
 
-/* ==============================
-   Load Excel (sheet "INV")
-   ============================== */
-async function loadExcel() {
-    try {
-        const res = await fetch("assets/inventarislab2.xlsx");
-        if (!res.ok) throw new Error("Tidak dapat load file inventarislab2.xlsx");
-        const buf = await res.arrayBuffer();
-        const wb = XLSX.read(buf, { type: "array" });
-        INV = XLSX.utils.sheet_to_json(wb.Sheets["INV"] || wb.Sheets[wb.SheetNames[0]]);
 
-        // apply SIGNED state from localStorage to INV items if matching NO MEJA
-        if (INV && INV.length) {
-            INV.forEach(item => {
-                const no = String(item["NO MEJA"] || item["No Meja"] || item["NO_MEJA"] || "").trim();
-                if (no && SIGNED[no]) item.signed = true;
-            });
+/* =============================
+   RENDER GRID
+============================= */
+
+function render(){
+    const grid=document.getElementById("grid");
+    grid.innerHTML="";
+
+    for(let i=1;i<=36;i++){
+        const div=document.createElement("div");
+        div.className="card";
+        if(localStorage.getItem("mark"+i)){
+            div.classList.add("marked");
         }
 
-        updateDashboard();
-        renderMap();
-    } catch (err) {
-        console.error(err);
-        alert("Gagal memuat inventarislab2.xlsx. Pastikan file ada di folder assets dan bernama inventarislab2.xlsx.");
-    }
-}
-loadExcel();
+        div.innerHTML=`
+            <b>Meja ${i}</b><br><br>
+            <b>WiFi:</b><br>
+            User: ${wifi[i-1].user}<br>
+            Password: ${wifi[i-1].pass}<br><br>
 
-/* ==============================
-   Dashboard updates
-   ============================== */
-function updateDashboard() {
-    const win = INV.filter(x => (x.OS || "").toLowerCase() === "windows 10 pro 64 bit");
-    const chrome = INV.filter(x => (x.OS || "").toLowerCase() === "chromebook");
+            <b>Belajar.id:</b><br>
+            Email: ${belajar[i-1]}<br>
+            Password: Belajar2025!<br><br>
 
-    const normal   = INV.filter(x => (x.Kondisi || "").toLowerCase() === "normal");
-    const ringan   = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("ringan"));
-    const berat    = INV.filter(x => (x.Kondisi || "").toLowerCase().includes("berat"));
-
-    const needMouse    = INV.filter(x => (x.Mouse || "").toLowerCase() === "tidak");
-    const needKeyboard = INV.filter(x => (x.Keyboard || "").toLowerCase() === "tidak");
-
-    document.getElementById("totalPerangkat").innerText = (win.length + chrome.length) || 0;
-    document.getElementById("totalWindows").innerText = win.length || 0;
-    document.getElementById("totalChromebook").innerText = chrome.length || 0;
-
-    document.getElementById("normalCount").innerText = normal.length || 0;
-    document.getElementById("ringanCount").innerText = ringan.length || 0;
-    document.getElementById("beratCount").innerText = berat.length || 0;
-
-    document.getElementById("mouseNeed").innerText = needMouse.length || 0;
-    document.getElementById("keyboardNeed").innerText = needKeyboard.length || 0;
-}
-
-/* ==============================
-   Render map grid
-   ============================== */
-function renderMap() {
-    const grid = document.getElementById("mapGrid");
-    grid.innerHTML = "";
-
-    const rows = [
-        [22,21,20,19,18,17,"",4,3,2,1],
-        [28,27,26,25,24,23,"",8,7,6,5],
-        [34,33,32,31,30,29,"",12,11,10,9],
-        [40,39,38,37,36,35,"",16,15,14,13]
-    ];
-
-    rows.forEach(r => {
-        r.forEach(mejaNum => {
-            const div = document.createElement("div");
-
-            if (mejaNum === "") {
-                div.className = "meja kosong";
-                grid.appendChild(div);
-                return;
-            }
-
-            const item = INV.find(x => {
-                // be permissive with column name
-                const val = x["NO MEJA"] ?? x["No Meja"] ?? x["NO_MEJA"] ?? x["NO_MEJA"];
-                return Number(val) === Number(mejaNum);
-            });
-
-            let kondisiClass = "kosong";
-            if (item) {
-                if (item.signed || SIGNED[String(mejaNum)]) {
-                    kondisiClass = "signed";
-                } else {
-                    let k = (item.Kondisi || "").toLowerCase();
-                    if (k === "normal") kondisiClass = "normal";
-                    else if (k.includes("ringan")) kondisiClass = "ringan";
-                    else if (k.includes("berat")) kondisiClass = "berat";
-                }
-            }
-
-            div.className = `meja ${kondisiClass}`;
-            div.textContent = mejaNum;
-
-            if (item) div.onclick = () => showDetail(mejaNum);
-            else {
-                // still allow empty-seat info popup if wanted
-                div.onclick = null;
-            }
-
-            grid.appendChild(div);
-        });
-    });
-}
-
-/* ==============================
-   Show detail popup (WiFi + Belajar)
-   ============================== */
-function showDetail(no) {
-    const box = document.getElementById("detailBox");
-    const item = INV.find(x => {
-        const val = x["NO MEJA"] ?? x["No Meja"] ?? x["NO_MEJA"];
-        return String(val).trim() === String(no).trim();
-    });
-
-    box.style.display = "block";
-
-    if (!item) {
-        box.innerHTML = `<h3>Detail Meja ${no}</h3><div class="muted">Data tidak ditemukan pada sheet INV</div>`;
-        return;
-    }
-
-    const login = getLogin(no, item);
-
-    // mark whether this seat currently signed (from item or SIGNED LS)
-    const isSigned = !!(item.signed || SIGNED[String(no)]);
-
-    let belajarHtml = "";
-    if (login.belajar) {
-        belajarHtml = `
-            <hr>
-            <div class="small"><b>Akun Belajar.id (disarankan untuk Chromebook)</b></div>
-            <b>Email:</b> ${login.belajar.user}<br>
-            <b>Password:</b> ${login.belajar.pass}<br>
+            <button class="btn" onclick="mark(${i})">Tandai</button>
         `;
-    } else {
-        belajarHtml = `
-            <hr>
-            <div class="small muted">Tidak ada akun belajar.id untuk perangkat ini.</div>
-        `;
+        grid.appendChild(div);
     }
-
-    box.innerHTML = `
-        <h3>Detail Meja ${no}</h3>
-
-        <b>No Inventaris:</b> ${item["No Inventaris"] || "-"}<br>
-        <b>Merek / Tipe:</b> ${item["Merek / Tipe"] || "-"}<br>
-        <b>Processor:</b> ${item["Processor"] || "-"}<br>
-        <b>RAM:</b> ${item["RAM"] || "-"}<br>
-        <b>Storage:</b> ${item["Storage"] || "-"}<br>
-        <b>Layar:</b> ${item["Layar"] || "-"}<br>
-        <b>OS:</b> ${item["OS"] || "-"}<br><br>
-
-        <div class="small"><b>Akun WiFi (LAB 2)</b></div>
-        <b>Username:</b> ${login.wifi.user}<br>
-        <b>Password:</b> ${login.wifi.pass}<br>
-
-        ${belajarHtml}
-
-        <div style="margin-top:10px;">
-            <button id="btnSign${no}" class="btn btn-primary">
-                ${isSigned ? "✔ Sudah Sign-In (Tandai Ulang)" : "✔ Tandai Sudah Sign-In"}
-            </button>
-            <button id="btnClose" class="btn btn-ghost" style="margin-left:8px;">Tutup</button>
-        </div>
-    `;
-
-    document.getElementById(`btnSign${no}`).onclick = () => {
-        // toggle signed state
-        const key = String(no);
-        const nowSigned = !SIGNED[key];
-        SIGNED[key] = nowSigned;
-        // also apply to INV so UI updates immediately
-        item.signed = nowSigned;
-        saveSignedToLS(SIGNED);
-        renderMap();
-        // close popup
-        box.style.display = "none";
-    };
-
-    document.getElementById("btnClose").onclick = () => {
-        box.style.display = "none";
-    };
 }
 
-/* ==============================
-   Reset sign-ins button
-   ============================== */
-document.getElementById("resetSigns").onclick = () => {
-    if (!confirm("Reset semua tanda 'Sudah Sign-In'?")) return;
-    SIGNED = {};
-    saveSignedToLS(SIGNED);
-    // remove signed flag from INV items too
-    INV.forEach(it => { if (it.signed) delete it.signed; });
-    renderMap();
-};
+render();
 
-/* ==============================
-   Helper: save SIGNED
-   ============================== */
-function saveSignedToLS(obj) {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch (e) { console.warn(e); }
+
+/* =============================
+   SYSTEM MARK / LOG
+============================= */
+
+function mark(meja){
+    const catatan = prompt("Tulis kendala di meja "+meja+":");
+    if(catatan===null || catatan==="") return;
+
+    const waktu = new Date().toLocaleString("id-ID");
+    const logLine = `Meja ${meja} | ${waktu} | ${catatan}\n`;
+
+    // simpan mark di localStorage
+    localStorage.setItem("mark"+meja,catatan);
+
+    // simpan log
+    let log = localStorage.getItem("logtxt") || "";
+    log += logLine;
+    localStorage.setItem("logtxt",log);
+
+    render();
 }
 
-/* ==============================
-   If you want to debug
-   ============================== */
-window.debugINV = () => INV;
-window.debugSIGNED = () => SIGNED;
 
+/* =============================
+   DOWNLOAD LOG.TXT
+============================= */
+
+function downloadLog(){
+    let log = localStorage.getItem("logtxt") || "Belum ada log...";
+    const blob = new Blob([log],{type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="log.txt";
+    a.click();
+}
 </script>
+
 </body>
 </html>
