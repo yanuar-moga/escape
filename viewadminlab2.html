@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>LAB 2 - Viewer Mode</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+  }
+  h1 {
+    text-align: center;
+    margin: 10px 0;
+  }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    padding: 20px;
+  }
+  .meja {
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    cursor: default;
+    color: #000;
+  }
+  .abu { background: #6c6c6c; color:#fff; }
+  .hijau { background: #47d147; }
+  .kuning { background: #ffd633; }
+  .merah { background: #ff4d4d; }
+  .ungu { background: #b84ad1; }
+
+  /* Floating Download Button */
+  #downloadLog {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #2196F3;
+    padding: 14px 18px;
+    border-radius: 50px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #downloadLog:hover {
+    background:#0b7dda;
+  }
+</style>
+</head>
+<body>
+
+<h1>LAB 2 • Viewer Mode</h1>
+<p style="text-align:center; font-size:14px; opacity:.8">
+  Mode tampilan (umum) — tidak bisa edit atau tandai
+</p>
+
+<div id="grid"></div>
+
+<div id="downloadLog">💾 Download Log Masalah</div>
+
+<!-- ========================= -->
+<!-- Firebase + Config         -->
+<!-- ========================= -->
+<script src="config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+// Init Firebase
+firebase.initializeApp(window.firebaseConfig);
+const db = firebase.database();
+
+// ===============================
+// DATA INVENTARIS DARI TABEL YANG KAMU KIRIM
+// ===============================
+// status: kosong = abu-abu
+// kondisi: Normal, Rusak Ringan, Rusak Berat
+
+const inventaris = {
+  1:"Normal",
+  2:"Normal",
+  3:"Rusak Ringan",
+  4:"Rusak Ringan",
+  5:"Normal",
+  6:"Normal",
+  7:"Normal",
+  8:"Normal",
+  9:"Normal",
+ 10:"Normal",
+ 11:"Normal",
+ 12:"Normal",
+ 13:"Rusak Berat",
+ 14:"Normal",
+ 15:"",
+ 16:"",
+ 17:"Rusak Ringan",
+ 18:"Rusak Ringan",
+ 19:"Rusak Ringan",
+ 20:"Normal",
+ 21:"Normal",
+ 22:"Rusak Berat",
+ 23:"Rusak Berat",
+ 24:"Rusak Berat",
+ 25:"Rusak Ringan",
+ 26:"Normal",
+ 27:"Normal",
+ 28:"Normal",
+ 29:"Normal",
+ 30:"Normal",
+ 31:"Normal",
+ 32:"Normal",
+ 33:"Rusak Berat",
+ 34:"Rusak Berat",
+ 35:"Normal",
+ 36:""
+};
+
+// ===============================
+// BUAT GRID MEJA 1–36
+// ===============================
+function getInventarisWarna(no) {
+  const status = inventaris[no] ?? "";
+  if (!status) return "abu";        // tidak ada perangkat
+  if (status.includes("Rusak Berat")) return "merah";
+  if (status.includes("Rusak Ringan")) return "kuning";
+  return "hijau";                   // normal
+}
+
+function render() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  for (let i = 1; i <= 36; i++){
+    const div = document.createElement("div");
+    div.id = "meja" + i;
+    div.className = "meja " + getInventarisWarna(i);
+    div.innerText = "Meja " + i;
+    grid.appendChild(div);
+  }
+}
+
+// ===============================
+// REALTIME MARKING DARI ADMIN
+// ===============================
+db.ref("lab2/marking").on("value", snapshot => {
+  const data = snapshot.val() || {};
+
+  for (let i = 1; i <= 36; i++){
+    const mejaDiv = document.getElementById("meja"+i);
+    if (!mejaDiv) continue;
+
+    // Reset ke warna inventaris dulu
+    mejaDiv.className = "meja " + getInventarisWarna(i);
+
+    // Jika ditandai admin
+    if (data[i]) {
+      mejaDiv.classList.remove("abu","hijau","kuning","merah");
+      mejaDiv.classList.add("ungu");
+    }
+  }
+});
+
+render();
+
+
+// ===============================
+// DOWNLOAD LOG MASALAH
+// ===============================
+document.getElementById("downloadLog").addEventListener("click", async ()=>{
+  const snap = await db.ref("lab2/log").once("value");
+  const log = snap.val() || "";
+
+  const blob = new Blob([log], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "lab2-log.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+
+</body>
+</html>
