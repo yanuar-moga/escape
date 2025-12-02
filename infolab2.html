@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Lab 2 - Viewer Mode</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f1f1f1;
+        padding: 20px;
+    }
+    h1 {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .meja {
+        background: white;
+        border: 2px solid #ccc;
+        padding: 10px;
+        border-radius: 8px;
+        min-height: 110px;
+    }
+    .meja.merah { background: #ffb3b3; }
+    .meja.kuning { background: #fff7b3; }
+    .meja.hijau { background: #b3ffb3; }
+    .meja.ungu { background: #d9b3ff; }
+    
+    .title {
+        font-weight: bold;
+        font-size: 17px;
+        margin-bottom: 6px;
+    }
+    .note {
+        font-size: 13px;
+        white-space: pre-line;
+    }
+
+    .download-btn {
+        display: block;
+        width: 200px;
+        margin: 10px auto 20px;
+        padding: 10px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+
+<h1>💻 Viewer Mode – Lab 2</h1>
+
+<button class="download-btn" onclick="downloadLog()">📥 Download Log Masalah</button>
+
+<div class="grid" id="grid"></div>
+
+<script>
+/* ======================================================
+   LOAD DATA MEJA + TANDA MASALAH DARI LOCALSTORAGE
+   ====================================================== */
+
+function loadData() {
+
+    let grid = document.getElementById("grid");
+    grid.innerHTML = "";
+
+    for (let i = 1; i <= 36; i++) {
+
+        let mejaKey = "meja" + i;
+        let data = JSON.parse(localStorage.getItem(mejaKey)) || {
+            status: "normal",
+            note: ""
+        };
+
+        let div = document.createElement("div");
+        div.classList.add("meja");
+
+        // warna by status
+        if (data.status === "masalah") div.classList.add("ungu");
+        if (data.status === "normal") div.classList.add("hijau");
+
+        div.innerHTML = `
+            <div class="title">Meja ${i}</div>
+            <div class="note">${data.note || ""}</div>
+        `;
+
+        grid.appendChild(div);
+    }
+}
+
+
+/* ======================================================
+   DOWNLOAD LOG MASALAH
+   ====================================================== */
+
+function downloadLog() {
+    let log = localStorage.getItem("lab2_log") || "Tidak ada log.\n";
+
+    let blob = new Blob([log], { type: "text/plain" });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "lab2-log.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+
+/* ======================================================
+   AUTO LOAD SAAT HALAMAN DIBUKA
+   ====================================================== */
+
+window.onload = loadData;
+</script>
+
+</body>
+</html>
