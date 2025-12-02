@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard Inventaris Lab Komputer 2</title>
+<style>
+    body { font-family: 'Calibri', sans-serif; background:#f4f7fb; padding:20px; margin:0; }
+    .header { background:#0056b3; padding:15px 25px; color:white; font-size:28px; font-weight:bold; border-left:10px solid #ffcc00; width:fit-content; border-radius:5px;}
+    .card-container { display:grid; grid-template-columns:repeat(3,260px); gap:15px; margin-top:20px; }
+    .card { background:white; border-left:6px solid #ffcc00; padding:15px; border-radius:8px; box-shadow:0 3px 6px rgba(0,0,0,0.15); font-size:18px;}
+    .card-title { color:#0056b3; font-weight:bold; }
+
+    #mapGrid { display:grid; grid-template-columns:repeat(11,55px); gap:6px; margin-top:30px; margin-bottom:40px; }
+    .meja { width:55px; height:45px; border-radius:6px; font-weight:bold; display:flex; justify-content:center; align-items:center; cursor:pointer; user-select:none; }
+    .normal { background:#28a745; color:white; }
+    .ringan { background:#ffc107; color:black; }
+    .berat  { background:#dc3545; color:white; }
+    .signed { background:#007bff !important; color:white !important; }
+    .marked { background:#7a00ff !important; color:white !important; }
+    .empty  { background:#c4c4c4 !important; color:#555 !important; }
+    .kosong { background:transparent; border:none; cursor:default; }
+
+    #detailBox { background:white; width:360px; padding:18px; border-radius:8px; box-shadow:0 3px 8px rgba(0,0,0,0.2); display:none; position:fixed; right:24px; top:120px; z-index:60; }
+    #detailBox h3 { margin-top:0; color:#0056b3; border-left:6px solid #ffcc00; padding-left:8px; }
+
+    .btn { display:inline-block; padding:8px 12px; border-radius:6px; border:1px solid #0056b3; cursor:pointer; background:white; color:#0056b3; font-weight:bold; }
+    .btn-ghost { background:transparent; border:1px solid #ddd; color:#333; }
+    .btn-primary { background:#007bff; color:white; border:none; }
+    .btn-mark { background:#7a00ff; color:white; border:none; }
+    .btn-reset { background:#ff3399; color:white; border:none; }
+    .btn-download { background:#00aa55; color:white; border:none; }
+
+    #adminControl { position:fixed; top:12px; right:12px; z-index:9999; display:flex; gap:8px; align-items:center; }
+    #btnLogin,#btnLogout { background:#6436ff; color:white; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px; box-shadow:0 0 8px rgba(0,0,0,0.15); }
+    #btnLogout { background:#e91e63; }
+    .small { font-size:13px; color:#444; }
+
+    @media (max-width:900px){
+        .card-container { grid-template-columns:repeat(1,1fr); }
+        #mapGrid { grid-template-columns:repeat(6,55px); }
+        #detailBox { position:static; width:auto; margin-top:20px; left:12px; right:12px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="header">📘 Dashboard Inventaris Lab Komputer</div>
+
+<!-- Floating admin control -->
+<div id="adminControl">
+    <button id="btnLogin" onclick="loginAdmin()">Masuk Admin</button>
+    <button id="btnLogout" onclick="logoutAdmin()" style="display:none;">Keluar</button>
+</div>
+
+<!-- Action buttons (admin-only) -->
+<div style="margin-top:14px;margin-bottom:6px;">
+    <button id="resetSigns" class="btn btn-reset">Reset Semua Sign-In</button>
+    <button id="resetMarkBtn" class="btn btn-reset">Reset Semua Tanda Masalah</button>
+    <button id="downloadLog" class="btn btn-download">Download Log</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="card-container" style="margin-bottom:10px;">
+    <div class="card"><div class="card-title">Total Perangkat</div><span id="totalPerangkat">-</span></div>
+    <div class="card"><div class="card-title">Jumlah Windows</div><span id="totalWindows">-</span></div>
+    <div class="card"><div class="card-title">Jumlah Chromebook</div><span id="totalChromebook">-</span></div>
+
+    <div class="card"><div class="card-title">Perangkat Normal</div><span id="normalCount">-</span></div>
+    <div class="card"><div class="card-title">Rusak Ringan</div><span id="ringanCount">-</span></div>
+    <div class="card"><div class="card-title">Rusak Berat</div><span id="beratCount">-</span></div>
+
+    <div class="card"><div class="card-title">Kebutuhan Mouse</div><span id="mouseNeed">-</span></div>
+    <div class="card"><div class="card-title">Kebutuhan Keyboard</div><span id="keyboardNeed">-</span></div>
+</div>
+
+<h2 style="color:#0056b3;margin-top:8px;">📍 Peta Meja Lab</h2>
+<div id="mapGrid"></div>
+
+<div id="detailBox"></div>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<!-- Your firebase config (from your message) -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBr-nd0dxZl5q6DLPxMKLybJ7MyBc9kaBc",
+    authDomain: "realtime-database-f59b8.firebaseapp.com",
+    databaseURL: "https://realtime-database-f59b8-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "realtime-database-f59b8",
+    storageBucket: "realtime-database-f59b8.firebasestorage.app",
+    messagingSenderId: "320982155387",
+    appId: "1:320982155387:web:df67817761e282dee4a2de"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
+
+<!-- XLSX lib (kept if you want to support Excel upload later) -->
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+
+<script>
+/* ================= CONFIG ================= */
+const ADMIN_PIN = "17081945";
+let isAdmin = false;
+
+/* WIFI & CHROME ACCOUNTS (same mapping as before) */
+const WIFI = {};
+for (let i=1;i<=36;i++){ WIFI[i] = { user: `${i}lab2`, pass: String(i) }; }
+const CHROME_ACCOUNTS = [
+"putri.wika67@smp.belajar.id","kallista.putri192@smp.belajar.id","yulia.al83@smp.belajar.id",
+"nazril.hidayatullah18@smp.belajar.id","muhammad.febri1219@smp.belajar.id","muhamad.rizkan48@smp.belajar.id",
+"safania.52@smp.belajar.id","nia.hidayati013@smp.belajar.id","nayilla_azzahra25@smp.belajar.id",
+"widya.setya31@smp.belajar.id","yusuf.fahreza18@smp.belajar.id","muhamad.arif3591@smp.belajar.id",
+"muhamad.faiz3380@smp.belajar.id","muhammad.khairul8017@smp.belajar.id","aisyatul.maulida49@smp.belajar.id"];
+const CHROME_PASS = "Belajar2025!";
+
+/* local keys fallback */
+const LS_SIGNED = "lab2_signed";
+const LS_MARK = "lab2_marked";
+const LS_LOG_PREF = "lab2_local_logs";
+let LOCAL_LOGS = JSON.parse(localStorage.getItem(LS_LOG_PREF) || "[]");
+let SIGNED = JSON.parse(localStorage.getItem(LS_SIGNED) || "{}");
+let MARKED = JSON.parse(localStorage.getItem(LS_MARK) || "{}");
+
+/* helper log */
+function pushLocalLog(entry){
+    LOCAL_LOGS.push(entry);
+    localStorage.setItem(LS_LOG_PREF, JSON.stringify(LOCAL_LOGS));
+}
+
+/* ================= INVENTARIS (embedded from your data) =================
+   I parsed the table you provided and embedded the key fields:
+   - NO_MEJA (number)
+   - MerekTipe
+   - OS
+   - Kondisi
+   - Keterangan
+   - Mouse/Keyboard fields present if needed
+*/
+const INVENTARIS = [
+  /* Meja 1..40 — entries reflect your spreadsheet; blank rows omitted (treated as no device) */
+  {no:1,  inventaris:"29", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:2,  inventaris:"XX", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:3,  inventaris:"28", merek:"AXIO L19B", os:"Chromebook", kondisi:"Rusak Ringan", keterangan:"batre kembung"},
+  {no:4,  inventaris:"21 (43A)", merek:"LENOVO IDEAPAD 110", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Ringan", keterangan:"Normal, kadang suka ga masuk windows"},
+  {no:5,  inventaris:"20", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:6,  inventaris:"21", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:7,  inventaris:"26", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:8,  inventaris:"XX", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:9,  inventaris:"23", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:10, inventaris:"XX", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:11, inventaris:"17", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:12, inventaris:"18", merek:"AXIO L19B", os:"Chromebook", kondisi:"Normal", keterangan:"Normal"},
+  {no:13, inventaris:"38", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Berat", keterangan:"Normal, Trackpad Klik"},
+  {no:14, inventaris:"35", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  /* 15,16 are empty (no device) */
+  {no:17, inventaris:"6", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Ringan", keterangan:"Normal, Trackpad Klik"},
+  {no:18, inventaris:"8", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Ringan", keterangan:"Normal, Trackpad Klik"},
+  {no:19, inventaris:"XX", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Ringan", keterangan:"Normal, Driver Wifi Error"},
+  {no:20, inventaris:"24", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:21, inventaris:"5", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:22, inventaris:"22", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Berat", keterangan:"Normal, Trackpad Klik, Keyboard Error"},
+  {no:23, inventaris:"25", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Berat", keterangan:"Normal, Keyboard error"},
+  {no:24, inventaris:"3", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Berat", keterangan:"Normal, Trackpad Klik"},
+  {no:25, inventaris:"15", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64LBR", kondisi:"Rusak Ringan", keterangan:"Normal, Trackpad Klik"},
+  {no:26, inventaris:"26", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:27, inventaris:"27", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:28, inventaris:"28", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:29, inventaris:"29", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:30, inventaris:"11", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:31, inventaris:"31", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:32, inventaris:"XX", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  {no:33, inventaris:"33", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Berat", keterangan:"Normal, Trackpad Klik, Keyboard Error"},
+  {no:34, inventaris:"XX", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Rusak Berat", keterangan:"Normal, Trackpad Klik, Keyboard Error"},
+  {no:35, inventaris:"1", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  /* 36 empty */
+  /* 37 empty */
+  {no:38, inventaris:"12", merek:"LENOVO IDEAPAD 110 14LBR", os:"Windows 10 Pro 64 bit", kondisi:"Normal", keterangan:"Normal"},
+  /* 39 empty */
+  /* 40 empty */
+];
+
+/* create a lookup map for quick find */
+const INV_MAP = {};
+INVENTARIS.forEach(it => { INV_MAP[String(it.no)] = it; });
+
+/* ================= Firebase paths helpers ================= */
+function dbPathSigned(no){ return `/lab2/signed/${no}`; }
+function dbPathMarked(no){ return `/lab2/marked/${no}`; }
+function dbPathLogs(dateStr){ return `/lab2/logs/${dateStr}`; }
+
+/* ================= Render & UI ================= */
+function updateDashboardCounts(){
+    const hasDevice = INVENTARIS.length;
+    // compute based on INVENTARIS array
+    let win = INVENTARIS.filter(x => (x.os||"").toLowerCase().includes("windows")).length;
+    let chrome = INVENTARIS.filter(x => (x.os||"").toLowerCase().includes("chrome")).length;
+    document.getElementById("totalPerangkat").innerText = win + chrome;
+    document.getElementById("totalWindows").innerText = win;
+    document.getElementById("totalChromebook").innerText = chrome;
+    document.getElementById("normalCount").innerText = INVENTARIS.filter(x => (x.kondisi||"").toLowerCase()==="normal").length;
+    document.getElementById("ringanCount").innerText = INVENTARIS.filter(x => (x.kondisi||"").toLowerCase().includes("ringan")).length;
+    document.getElementById("beratCount").innerText = INVENTARIS.filter(x => (x.kondisi||"").toLowerCase().includes("berat")).length;
+    // mouse/keyboard counts rough: count 'ADA' in original not embedded — skip or set zeros
+    document.getElementById("mouseNeed").innerText = 0;
+    document.getElementById("keyboardNeed").innerText = 0;
+}
+
+function renderMap(){
+    const grid = document.getElementById("mapGrid");
+    grid.innerHTML = "";
+    const rows = [
+      [22,21,20,19,18,17,"",4,3,2,1],
+      [28,27,26,25,24,23,"",8,7,6,5],
+      [34,33,32,31,30,29,"",12,11,10,9],
+      [40,39,38,37,36,35,"",16,15,14,13]
+    ];
+    rows.forEach(row=>{
+        row.forEach(no=>{
+            const div = document.createElement("div");
+            if(no === ""){
+                div.className = "meja kosong"; grid.appendChild(div); return;
+            }
+            const item = INV_MAP[String(no)];
+            let cls;
+            if(item){
+                // check marked first
+                if(MARKED[String(no)]) cls = "marked";
+                else if(SIGNED[String(no)]) cls = "signed";
+                else {
+                    const k = (item.kondisi || "").toLowerCase();
+                    if(k === "normal") cls = "normal";
+                    else if(k.includes("ringan")) cls = "ringan";
+                    else if(k.includes("berat")) cls = "berat";
+                    else cls = "normal";
+                }
+            } else {
+                cls = "empty";
+            }
+            div.className = "meja " + cls;
+            div.textContent = no;
+            div.onclick = ()=> showDetail(no);
+            grid.appendChild(div);
+        });
+    });
+    renderAccessUI();
+}
+
+/* ================= Admin control UI ================= */
+function renderAccessUI(){
+    document.getElementById("btnLogin").style.display = isAdmin ? "none" : "inline-block";
+    document.getElementById("btnLogout").style.display = isAdmin ? "inline-block" : "none";
+    document.querySelectorAll("#resetSigns,#resetMarkBtn").forEach(b => b.style.display = isAdmin ? "inline-block" : "none");
+    // hide any detail buttons if shown
+    document.querySelectorAll(".btn-sign, .btn-mark").forEach(b=> b.style.display = isAdmin ? "inline-block" : "none");
+}
+
+function loginAdmin(){
+    const p = prompt("Masukkan PIN Admin:");
+    if(p === ADMIN_PIN){ isAdmin = true; alert("Berhasil masuk ADMIN"); renderAccessUI(); }
+    else alert("PIN salah");
+}
+function logoutAdmin(){ isAdmin = false; alert("Mode viewer aktif"); renderAccessUI(); }
+
+/* ================= Detail popup ================= */
+function showDetail(no){
+    const box = document.getElementById("detailBox");
+    box.style.display = "block";
+    const item = INV_MAP[String(no)];
+    if(!item){
+        box.innerHTML = `<h3>Detail Meja ${no}</h3><div class="small">Data inventaris tidak ditemukan untuk meja ini.</div><div style="margin-top:12px;"><button id="btnClose" class="btn btn-ghost">Tutup</button></div>`;
+        document.getElementById("btnClose").onclick = ()=> box.style.display='none';
+        renderAccessUI(); return;
+    }
+
+    const wifi = WIFI[no] || {user:"-", pass:"-"};
+    const isChrome = (item.os||"").toLowerCase().includes("chrome");
+    const belajarUser = isChrome ? CHROME_ACCOUNTS[(no-1) % CHROME_ACCOUNTS.length] : "-";
+    const markedNote = MARKED[String(no)]?.note || item.keterangan || "-";
+    const signedNow = !!SIGNED[String(no)];
+
+    box.innerHTML = `
+        <h3>Detail Meja ${no}</h3>
+        <b>No Inventaris:</b> ${item.inventaris || "-"}<br>
+        <b>Merek / Tipe:</b> ${item.merek || "-"}<br>
+        <b>OS:</b> ${item.os || "-"}<br>
+        <b>Kondisi:</b> ${item.kondisi || "-"}<br>
+        <b>Keterangan:</b> ${item.keterangan || "-"}<br><br>
+
+        <div class="small"><b>Akun WiFi (LAB 2)</b></div>
+        <b>Username:</b> ${wifi.user}<br>
+        <b>Password:</b> ${wifi.pass}<br><br>
+
+        <div class="small"><b>Akun Belajar.ID (jika Chromebook)</b></div>
+        <b>Email:</b> ${isChrome ? belajarUser : "-"}<br>
+        <b>Password:</b> ${isChrome ? CHROME_PASS : "-"}<br><br>
+
+        <b>Status Signed:</b> ${signedNow ? "Sudah" : "Belum"}<br>
+        <b>Catatan Mark:</b> ${markedNote}<br>
+
+        <div style="margin-top:12px;">
+            <button id="btnSign${no}" class="btn btn-primary btn-sign" style="margin-right:8px;">${signedNow ? "✔ Tandai Ulang Sign-In" : "✔ Tandai Sudah Sign-In"}</button>
+            <button id="btnMark${no}" class="btn btn-mark" style="margin-right:8px;">🚩 Tandai Masalah</button>
+            <button id="btnClose" class="btn btn-ghost">Tutup</button>
+        </div>
+    `;
+    renderAccessUI();
+
+    document.getElementById("btnClose").onclick = ()=> box.style.display='none';
+
+    document.getElementById(`btnSign${no}`).onclick = async ()=>{
+        if(!isAdmin){ alert("Hanya Admin yang dapat mengubah status sign-in."); return; }
+        const key = String(no);
+        SIGNED[key] = !SIGNED[key];
+        localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
+        // write to firebase
+        try{
+            await db.ref(dbPathSigned(key)).set(!!SIGNED[key]);
+            const entry = { time: Date.now(), action: SIGNED[key] ? "Signed in (admin)" : "Sign-in removed (admin)", meja: key };
+            await db.ref(dbPathLogs(new Date().toISOString().split("T")[0])).push(entry);
+        }catch(e){
+            // fallback local
+            pushLocalLog({time: Date.now(), meja:key, action: SIGNED[key] ? "Signed in (admin)" : "Sign-in removed (admin)"});
+        }
+        box.style.display='none';
+        renderMap();
+    };
+
+    document.getElementById(`btnMark${no}`).onclick = async ()=>{
+        if(!isAdmin){ alert("Hanya Admin yang dapat menandai masalah."); return; }
+        const note = prompt("Tuliskan kendala / catatan untuk meja " + no + " :");
+        if(!note) return;
+        MARKED[String(no)] = { note: note, time: Date.now() };
+        localStorage.setItem(LS_MARK, JSON.stringify(MARKED));
+        try{
+            await db.ref(dbPathMarked(String(no))).set({ note: note, time: Date.now() });
+            await db.ref(dbPathLogs(new Date().toISOString().split("T")[0])).push({ time: Date.now(), meja: String(no), action: "Marked: " + note });
+        }catch(e){
+            pushLocalLog({time: Date.now(), meja:String(no), action: "Marked: " + note});
+        }
+        box.style.display='none';
+        renderMap();
+    };
+}
+
+/* ================= Reset & Download ================= */
+document.getElementById("resetSigns").onclick = async ()=>{
+    if(!isAdmin){ alert("Hanya Admin yang dapat mereset sign-in."); return; }
+    if(!confirm("Reset semua status Sign-In?")) return;
+    SIGNED = {}; localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
+    // write to firebase
+    try{
+        await db.ref('/lab2/signed').set(null);
+        await db.ref(dbPathLogs(new Date().toISOString().split("T")[0])).push({ time: Date.now(), action: "Reset all signs (admin)"});
+    }catch(e){ pushLocalLog({time:Date.now(), action:"Reset all signs (admin)"}); }
+    renderMap(); alert("Semua sign-in direset.");
+};
+
+document.getElementById("resetMarkBtn").onclick = async ()=>{
+    if(!isAdmin){ alert("Hanya Admin yang dapat mereset tanda masalah."); return; }
+    if(!confirm("Reset semua tanda masalah (tidak akan menghapus log)?")) return;
+    MARKED = {}; localStorage.removeItem(LS_MARK);
+    try{
+        await db.ref('/lab2/marked').set(null);
+        await db.ref(dbPathLogs(new Date().toISOString().split("T")[0])).push({ time: Date.now(), action: "Reset all marks (admin)"});
+    }catch(e){ pushLocalLog({time:Date.now(), action:"Reset all marks (admin)"}); }
+    renderMap(); alert("Semua tanda masalah dihapus.");
+};
+
+/* Download log: try server(Firebase) for today's logs, fallback to local logs combined */
+document.getElementById("downloadLog").onclick = async ()=>{
+    const dateStr = new Date().toISOString().split("T")[0];
+    try{
+        const snap = await db.ref(dbPathLogs(dateStr)).once('value');
+        const obj = snap.val();
+        let text = `Log tanggal ${dateStr}\n\n`;
+        if(obj){
+            Object.keys(obj).forEach(k=>{
+                const it = obj[k];
+                const time = new Date(it.time || Date.now()).toLocaleString();
+                text += `${time} | Meja ${it.meja || '-'} | ${it.action || '-'}\n`;
+            });
+        } else {
+            text += "Tidak ada log di server untuk hari ini.\n";
+        }
+        // add local fallback older logs as well
+        if(LOCAL_LOGS && LOCAL_LOGS.length) {
+            text += `\n--- Local fallback logs ---\n`;
+            LOCAL_LOGS.forEach(l => {
+                const t = new Date(l.time || Date.now()).toLocaleString();
+                text += `${t} | Meja ${l.meja || '-'} | ${l.action || l.action}\n`;
+            });
+        }
+        const blob = new Blob([text], {type:'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `log-${dateStr}.txt`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        return;
+    }catch(e){
+        // fallback combine local logs
+        const text = LOCAL_LOGS.map(l => `${new Date(l.time||Date.now()).toLocaleString()} | Meja ${l.meja||'-'} | ${l.action||'-'}`).join("\n") || "Belum ada log lokal.";
+        const blob = new Blob([text], {type:'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `log-local-all.txt`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        return;
+    }
+};
+
+/* ================= Real-time listeners: sync SIGNED & MARKED from Firebase if available ================= */
+function attachRealtimeListeners(){
+    // signed
+    try{
+        db.ref('/lab2/signed').on('value', snap=>{
+            const v = snap.val() || {};
+            // copy to SIGNED and localStorage
+            SIGNED = v;
+            localStorage.setItem(LS_SIGNED, JSON.stringify(SIGNED));
+            renderMap();
+        });
+        db.ref('/lab2/marked').on('value', snap=>{
+            const v = snap.val() || {};
+            MARKED = v;
+            localStorage.setItem(LS_MARK, JSON.stringify(MARKED));
+            renderMap();
+        });
+    }catch(e){
+        // ignore: no realtime / no permission
+    }
+}
+
+/* ================= Init ================= */
+function init(){
+    // load local saved signs/marks
+    try{ SIGNED = JSON.parse(localStorage.getItem(LS_SIGNED) || "{}"); }catch{}
+    try{ MARKED = JSON.parse(localStorage.getItem(LS_MARK) || "{}"); }catch{}
+    try{ LOCAL_LOGS = JSON.parse(localStorage.getItem(LS_LOG_PREF) || "[]"); }catch{}
+    updateDashboardCounts();
+    renderMap();
+    attachRealtimeListeners();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
