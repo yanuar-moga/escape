@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Karakter Guru</title>
+
+<style>
+:root {
+  --bg: #f3f3f3;
+  --card: rgba(255,255,255,0.7);
+  --blur: blur(12px);
+  --border: rgba(0,0,0,0.05);
+  --text: #1f1f1f;
+  --accent: #0078d4;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* HEADER */
+.header {
+  padding: 20px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+/* CARD CONTAINER */
+.container {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* CARD STYLE */
+.card {
+  background: var(--card);
+  backdrop-filter: var(--blur);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
+/* TITLE */
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* BADGE */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.good {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.bad {
+  background: #fdecea;
+  color: #d93025;
+}
+
+.info {
+  font-size: 12px;
+  margin: 4px 0;
+  opacity: 0.8;
+}
+
+/* SEARCH */
+.search {
+  margin: 0 20px 10px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  outline: none;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">📊 Dashboard Karakter Guru</div>
+
+<div class="search">
+  <input type="text" id="search" placeholder="Cari nama...">
+</div>
+
+<div class="container" id="container"></div>
+
+<script>
+
+const API_URL = "https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT1UtPAilcb4h0XUZgLwnlP1bffdbnJk5ldGP3CQnw/exec";
+
+let globalData = [];
+
+fetch(API_URL)
+.then(res => res.json())
+.then(data => {
+  globalData = data;
+  render(data);
+});
+
+function render(data) {
+  const container = document.getElementById("container");
+  container.innerHTML = "";
+
+  const header = data[0];
+
+  data.slice(1).forEach(row => {
+
+    let nama = row[1] || "-";
+    let numerologi = row[7] || "-";
+    let karakter = row[10] || "-";
+    let cinta = row[9] || "-";
+    let kerja = row[12] || "-";
+    let cocok = row[11] || "";
+
+    let badgeClass = cocok.includes("Cocok") ? "good" : "bad";
+
+    container.innerHTML += `
+      <div class="card">
+        <div class="name">${nama}</div>
+
+        <div class="info">🔢 Numerologi: ${numerologi}</div>
+        <div class="info">💪 Karakter: ${karakter}</div>
+        <div class="info">💖 Love: ${cinta}</div>
+        <div class="info">🧠 Kerja: ${kerja}</div>
+
+        ${cocok ? `<div class="badge ${badgeClass}">${cocok}</div>` : ""}
+      </div>
+    `;
+  });
+}
+
+// SEARCH
+document.getElementById("search").addEventListener("input", function() {
+  const keyword = this.value.toLowerCase();
+
+  const filtered = globalData.filter((row, i) => {
+    if (i === 0) return true;
+    return row[1]?.toLowerCase().includes(keyword);
+  });
+
+  render(filtered);
+});
+
+</script>
+
+</body>
+</html>
