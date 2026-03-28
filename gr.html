@@ -15,7 +15,7 @@ body{
 
 /* CONTAINER */
 .container{
-    max-width:800px;
+    max-width:900px;
     margin:auto;
     padding:20px;
 }
@@ -23,12 +23,12 @@ body{
 /* CARD */
 .card{
     background:linear-gradient(135deg,#1e293b,#0f172a);
-    border-radius:18px;
     padding:20px;
+    border-radius:18px;
     box-shadow:0 10px 30px rgba(0,0,0,.5);
 }
 
-/* SELECT */
+/* FORM */
 select,button{
     width:100%;
     padding:12px;
@@ -53,7 +53,7 @@ button:hover{
     opacity:.9;
 }
 
-/* HASIL CARD */
+/* RESULT */
 .result{
     margin-top:20px;
     background:#1e293b;
@@ -64,9 +64,9 @@ button:hover{
 
 .result h2{
     margin-top:0;
-    font-size:20px;
 }
 
+/* GRID */
 .grid{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -109,7 +109,7 @@ button:hover{
 <h3>Pilih Nama Guru</h3>
 
 <select id="nama">
-<option value="">-- Pilih Nama --</option>
+<option value="">Loading...</option>
 </select>
 
 <button onclick="tampilkan()">Tampilkan</button>
@@ -122,24 +122,39 @@ button:hover{
 
 <script>
 
-const API="PASTE_URL_WEB_APP_KAMU";
+const API="https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT1UtPAilcb4h0XUZgLwnlP1bffdbnJk5ldGP3CQnw/exec";
 
 let DATA=[];
 
-/* LOAD */
+/* LOAD DATA */
 fetch(API)
 .then(res=>res.json())
 .then(data=>{
-DATA=data;
 
-let select=document.getElementById("nama");
+    console.log("DATA:",data);
 
-data.forEach(d=>{
-select.innerHTML+=`<option value="${d.nama}">${d.nama}</option>`;
+    DATA=data;
+
+    let select=document.getElementById("nama");
+    select.innerHTML='<option value="">-- Pilih Nama --</option>';
+
+    data.forEach(d=>{
+        let nama = d.nama || d["Nama"] || d["NAMA"];
+        if(nama){
+            select.innerHTML+=`<option value="${nama}">${nama}</option>`;
+        }
+    });
+
+})
+.catch(err=>{
+    alert("❌ Gagal load data");
+    console.error(err);
 });
-});
 
-/* TAMPILKAN */
+/* AMAN VALUE */
+const val = (v)=> v ? v : "-";
+
+/* TAMPILKAN DATA */
 function tampilkan(){
 
 let nama=document.getElementById("nama").value;
@@ -149,28 +164,29 @@ alert("Pilih nama dulu!");
 return;
 }
 
-let d=DATA.find(x=>x.nama===nama);
+let d=DATA.find(x =>
+    x.nama===nama ||
+    x["Nama"]===nama ||
+    x["NAMA"]===nama
+);
 
 if(!d){
 alert("Data tidak ditemukan");
 return;
 }
 
-/* SAFE VALUE */
-const val = (v)=> v ? v : "-";
-
 document.getElementById("hasil").innerHTML=`
 
 <div class="result">
 
-<h2>${val(d.nama)}</h2>
+<h2>${val(d.nama || d["Nama"])}</h2>
 
 <div class="grid">
 
 <div class="item"><b>NIP</b>${val(d.nip)}</div>
 <div class="item"><b>Mapel</b>${val(d.mapel)}</div>
 
-<div class="item"><b>Tgl Lahir</b>${val(d["tgl lahir"])}</div>
+<div class="item"><b>Tgl Lahir</b>${val(d["tgl lahir"] || d["Tgl Lahir"])}</div>
 <div class="item"><b>Usia</b>${val(d.usia)}</div>
 
 <div class="item"><b>Tgl Pengangkatan</b>${val(d["tgl pengangkatan"])}</div>
