@@ -7,7 +7,7 @@
 
 <style>
 body{
-    font-family:Segoe UI;
+    font-family:Segoe UI,Arial;
     margin:0;
     background:#f1f5f9;
 }
@@ -23,7 +23,10 @@ body{
     padding:20px;
     border-radius:12px;
     box-shadow:0 5px 20px rgba(0,0,0,.1);
-    margin-bottom:15px;
+}
+
+h3{
+    margin-top:0;
 }
 
 select,button{
@@ -48,6 +51,9 @@ button:hover{
 
 .result{
     margin-top:15px;
+    background:#f8fafc;
+    padding:15px;
+    border-radius:10px;
     line-height:1.6;
 }
 </style>
@@ -73,7 +79,7 @@ button:hover{
 
 <script>
 
-const API="ISI_URL_WEB_APP_GAS_KAMU";
+const API="PASTE_URL_WEB_APP_DISINI";
 
 let DATA=[];
 
@@ -87,9 +93,13 @@ DATA=data;
 let select=document.getElementById("nama");
 
 data.forEach(d=>{
-select.innerHTML+=`<option value="${d.nama}">${d.nama}</option>`;
+select.innerHTML += `<option value="${d.nama}">${d.nama}</option>`;
 });
 
+})
+.catch(err=>{
+alert("❌ Gagal load data");
+console.error(err);
 });
 
 /* TAMPILKAN DATA */
@@ -98,18 +108,18 @@ function tampilkan(){
 let nama=document.getElementById("nama").value;
 
 if(!nama){
-alert("Pilih nama dulu!");
+alert("⚠️ Pilih nama dulu!");
 return;
 }
 
 let d=DATA.find(x=>x.nama===nama);
 
 if(!d){
-alert("Data tidak ditemukan");
+alert("❌ Data tidak ditemukan");
 return;
 }
 
-document.getElementById("hasil").innerHTML=`
+document.getElementById("hasil").innerHTML = `
 <b>Nama:</b> ${d.nama}<br>
 <b>NIP:</b> ${d.nip}<br>
 <b>Mapel:</b> ${d.mapel}<br>
