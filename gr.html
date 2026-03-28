@@ -7,54 +7,95 @@
 
 <style>
 body{
-    font-family:Segoe UI,Arial;
+    font-family:Segoe UI;
     margin:0;
-    background:#f1f5f9;
+    background:#0f172a;
+    color:#fff;
 }
 
+/* CONTAINER */
 .container{
-    max-width:700px;
+    max-width:800px;
     margin:auto;
     padding:20px;
 }
 
+/* CARD */
 .card{
-    background:#fff;
+    background:linear-gradient(135deg,#1e293b,#0f172a);
+    border-radius:18px;
     padding:20px;
-    border-radius:12px;
-    box-shadow:0 5px 20px rgba(0,0,0,.1);
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
 }
 
-h3{
-    margin-top:0;
-}
-
+/* SELECT */
 select,button{
     width:100%;
     padding:12px;
     margin-top:10px;
-    border-radius:8px;
-    border:1px solid #ccc;
+    border-radius:10px;
+    border:none;
     font-size:14px;
 }
 
+select{
+    background:#1e293b;
+    color:#fff;
+}
+
 button{
-    background:#2563eb;
-    color:white;
-    border:none;
+    background:linear-gradient(135deg,#3b82f6,#22d3ee);
+    color:#fff;
     cursor:pointer;
 }
 
 button:hover{
-    background:#1d4ed8;
+    opacity:.9;
 }
 
+/* HASIL CARD */
 .result{
-    margin-top:15px;
-    background:#f8fafc;
-    padding:15px;
+    margin-top:20px;
+    background:#1e293b;
+    padding:20px;
+    border-radius:16px;
+    animation:fade .4s ease;
+}
+
+.result h2{
+    margin-top:0;
+    font-size:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.item{
+    background:#0f172a;
+    padding:10px;
     border-radius:10px;
-    line-height:1.6;
+    font-size:13px;
+}
+
+.item b{
+    display:block;
+    font-size:11px;
+    opacity:.7;
+}
+
+@keyframes fade{
+    from{opacity:0;transform:translateY(10px)}
+    to{opacity:1;transform:translateY(0)}
+}
+
+/* MOBILE */
+@media(max-width:600px){
+    .grid{
+        grid-template-columns:1fr;
+    }
 }
 </style>
 </head>
@@ -64,6 +105,7 @@ button:hover{
 <div class="container">
 
 <div class="card">
+
 <h3>Pilih Nama Guru</h3>
 
 <select id="nama">
@@ -72,58 +114,89 @@ button:hover{
 
 <button onclick="tampilkan()">Tampilkan</button>
 
-<div class="result" id="hasil"></div>
+<div id="hasil"></div>
+
 </div>
 
 </div>
 
 <script>
 
-const API="https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT1UtPAilcb4h0XUZgLwnlP1bffdbnJk5ldGP3CQnw/exec";
+const API="PASTE_URL_WEB_APP_KAMU";
 
 let DATA=[];
 
-/* LOAD DATA */
+/* LOAD */
 fetch(API)
 .then(res=>res.json())
 .then(data=>{
-
 DATA=data;
 
 let select=document.getElementById("nama");
 
 data.forEach(d=>{
-select.innerHTML += `<option value="${d.nama}">${d.nama}</option>`;
+select.innerHTML+=`<option value="${d.nama}">${d.nama}</option>`;
+});
 });
 
-})
-.catch(err=>{
-alert("❌ Gagal load data");
-console.error(err);
-});
-
-/* TAMPILKAN DATA */
+/* TAMPILKAN */
 function tampilkan(){
 
 let nama=document.getElementById("nama").value;
 
 if(!nama){
-alert("⚠️ Pilih nama dulu!");
+alert("Pilih nama dulu!");
 return;
 }
 
 let d=DATA.find(x=>x.nama===nama);
 
 if(!d){
-alert("❌ Data tidak ditemukan");
+alert("Data tidak ditemukan");
 return;
 }
 
-document.getElementById("hasil").innerHTML = `
-<b>Nama:</b> ${d.nama}<br>
-<b>NIP:</b> ${d.nip}<br>
-<b>Mapel:</b> ${d.mapel}<br>
-<b>Jabatan:</b> ${d.jabatan}
+/* SAFE VALUE */
+const val = (v)=> v ? v : "-";
+
+document.getElementById("hasil").innerHTML=`
+
+<div class="result">
+
+<h2>${val(d.nama)}</h2>
+
+<div class="grid">
+
+<div class="item"><b>NIP</b>${val(d.nip)}</div>
+<div class="item"><b>Mapel</b>${val(d.mapel)}</div>
+
+<div class="item"><b>Tgl Lahir</b>${val(d["tgl lahir"])}</div>
+<div class="item"><b>Usia</b>${val(d.usia)}</div>
+
+<div class="item"><b>Tgl Pengangkatan</b>${val(d["tgl pengangkatan"])}</div>
+<div class="item"><b>Numerologi</b>${val(d.numerologi)}</div>
+
+<div class="item"><b>Zodiak</b>${val(d.zodiak)}</div>
+<div class="item"><b>Bahasa Cinta</b>${val(d["bahasa cinta"])}</div>
+
+<div class="item"><b>Karakter Kuat</b>${val(d["karakter kuat"])}</div>
+<div class="item"><b>Angka Keberuntungan</b>${val(d["angka keberuntungan"])}</div>
+
+<div class="item"><b>Watak Jawa</b>${val(d["watak jawa"])}</div>
+<div class="item"><b>Shio</b>${val(d.shio)}</div>
+
+<div class="item"><b>Elemen</b>${val(d.elemen)}</div>
+<div class="item"><b>Kepribadian</b>${val(d.kepribadian)}</div>
+
+<div class="item"><b>Indikasi Gaya</b>${val(d["indikasi gaya"])}</div>
+<div class="item"><b>Kecocokan Tim</b>${val(d["kecocokan tim"])}</div>
+
+<div class="item"><b>Gaya Kerja</b>${val(d["gaya kerja"])}</div>
+<div class="item"><b>Potensi Karier</b>${val(d["potensi karier"])}</div>
+
+</div>
+
+</div>
 `;
 
 }
