@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Data Guru</title>
+<title>Data Guru Pro</title>
 
 <style>
 body{
@@ -13,14 +13,12 @@ body{
     color:#fff;
 }
 
-/* CONTAINER */
 .container{
     max-width:900px;
     margin:auto;
     padding:20px;
 }
 
-/* CARD */
 .card{
     background:linear-gradient(135deg,#1e293b,#0f172a);
     padding:20px;
@@ -28,7 +26,6 @@ body{
     box-shadow:0 10px 30px rgba(0,0,0,.5);
 }
 
-/* FORM */
 select,button{
     width:100%;
     padding:12px;
@@ -49,24 +46,13 @@ button{
     cursor:pointer;
 }
 
-button:hover{
-    opacity:.9;
-}
-
-/* RESULT */
 .result{
     margin-top:20px;
     background:#1e293b;
     padding:20px;
     border-radius:16px;
-    animation:fade .4s ease;
 }
 
-.result h2{
-    margin-top:0;
-}
-
-/* GRID */
 .grid{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -86,12 +72,6 @@ button:hover{
     opacity:.7;
 }
 
-@keyframes fade{
-    from{opacity:0;transform:translateY(10px)}
-    to{opacity:1;transform:translateY(0)}
-}
-
-/* MOBILE */
 @media(max-width:600px){
     .grid{
         grid-template-columns:1fr;
@@ -103,21 +83,16 @@ button:hover{
 <body>
 
 <div class="container">
-
 <div class="card">
 
 <h3>Pilih Nama Guru</h3>
 
-<select id="nama">
-<option value="">Loading...</option>
-</select>
-
+<select id="nama"></select>
 <button onclick="tampilkan()">Tampilkan</button>
 
 <div id="hasil"></div>
 
 </div>
-
 </div>
 
 <script>
@@ -126,12 +101,9 @@ const API="https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT
 
 let DATA=[];
 
-/* LOAD DATA */
 fetch(API)
 .then(res=>res.json())
 .then(data=>{
-
-    console.log("DATA:",data);
 
     DATA=data;
 
@@ -139,22 +111,15 @@ fetch(API)
     select.innerHTML='<option value="">-- Pilih Nama --</option>';
 
     data.forEach(d=>{
-        let nama = d["NAMA"];
-        if(nama){
-            select.innerHTML+=`<option value="${nama}">${nama}</option>`;
+        if(d.nama){
+            select.innerHTML+=`<option value="${d.nama}">${d.nama}</option>`;
         }
     });
 
-})
-.catch(err=>{
-    alert("❌ Gagal load data");
-    console.error(err);
 });
 
-/* AMAN VALUE */
-const val = (v)=> v ? v : "-";
+const val = v => v ? v : "-";
 
-/* TAMPILKAN DATA */
 function tampilkan(){
 
 let nama=document.getElementById("nama").value;
@@ -164,52 +129,46 @@ alert("Pilih nama dulu!");
 return;
 }
 
-let d=DATA.find(x => x["NAMA"]===nama);
-
-if(!d){
-alert("Data tidak ditemukan");
-return;
-}
+let d=DATA.find(x => x.nama===nama);
 
 document.getElementById("hasil").innerHTML=`
 
 <div class="result">
-
-<h2>${val(d["NAMA"])}</h2>
+<h2>${val(d.nama)}</h2>
 
 <div class="grid">
 
-<div class="item"><b>NIP</b>${val(d["NIP"])}</div>
-<div class="item"><b>Mapel</b>${val(d["MAPEL"])}</div>
+<div class="item"><b>NIP</b>${val(d.nip)}</div>
+<div class="item"><b>Gol Darah</b>${val(d.gol_darah)}</div>
 
-<div class="item"><b>Tgl Lahir</b>${val(d["Tgl Lahir"])}</div>
-<div class="item"><b>Usia</b>${val(d["Usia"])}</div>
+<div class="item"><b>Mapel</b>${val(d.mapel)}</div>
+<div class="item"><b>Tgl Lahir</b>${val(d.tgl_lahir)}</div>
 
-<div class="item"><b>Tgl Pengangkatan</b>${val(d["Tgl Pengangkatan"])}</div>
-<div class="item"><b>Numerologi</b>${val(d["Numerologi"])}</div>
+<div class="item"><b>Usia</b>${val(d.usia)}</div>
+<div class="item"><b>Tgl Pengangkatan</b>${val(d.tgl_pengangkatan)}</div>
 
-<div class="item"><b>Arti Numerologi</b>${val(d["Arti Angka Numerologi"])}</div>
-<div class="item"><b>Zodiak</b>${val(d["Zodiak"])}</div>
+<div class="item"><b>Numerologi</b>${val(d.numerologi)}</div>
+<div class="item"><b>Arti Numerologi</b>${val(d.arti_angka_numerologi)}</div>
 
-<div class="item"><b>Bahasa Cinta</b>${val(d["Bahasa Cinta"])}</div>
-<div class="item"><b>Karakter Kuat</b>${val(d["Karakter Kuat"])}</div>
+<div class="item"><b>Zodiak</b>${val(d.zodiak)}</div>
+<div class="item"><b>Bahasa Cinta</b>${val(d.bahasa_cinta)}</div>
 
-<div class="item"><b>Angka Keberuntungan</b>${val(d["Angka Keberuntungan"])}</div>
-<div class="item"><b>Watak Jawa</b>${val(d["Watak Jawa"])}</div>
+<div class="item"><b>Karakter Kuat</b>${val(d.karakter_kuat)}</div>
+<div class="item"><b>Angka Keberuntungan</b>${val(d.angka_keberuntungan)}</div>
 
-<div class="item"><b>Shio</b>${val(d["Shio"])}</div>
-<div class="item"><b>Elemen</b>${val(d["Elemen"])}</div>
+<div class="item"><b>Watak Jawa</b>${val(d.watak_jawa)}</div>
+<div class="item"><b>Shio</b>${val(d.shio)}</div>
 
-<div class="item"><b>Kepribadian</b>${val(d["Kepribadian"])}</div>
-<div class="item"><b>Indikasi Gaya</b>${val(d["Indikasi Gaya"])}</div>
+<div class="item"><b>Elemen</b>${val(d.elemen)}</div>
+<div class="item"><b>Kepribadian</b>${val(d.kepribadian)}</div>
 
-<div class="item"><b>Kecocokan Tim</b>${val(d["Kecocokan Tim"])}</div>
-<div class="item"><b>Gaya Kerja</b>${val(d["Gaya Kerja"])}</div>
+<div class="item"><b>Indikasi Gaya</b>${val(d.indikasi_gaya)}</div>
+<div class="item"><b>Kecocokan Tim</b>${val(d.kecocokan_tim)}</div>
 
-<div class="item"><b>Potensi Karier</b>${val(d["Potensi Karier"])}</div>
+<div class="item"><b>Gaya Kerja</b>${val(d.gaya_kerja)}</div>
+<div class="item"><b>Potensi Karier</b>${val(d.potensi_karier)}</div>
 
 </div>
-
 </div>
 `;
 
