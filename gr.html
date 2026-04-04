@@ -118,23 +118,6 @@ const API="https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT
 
 let DATA=[];
 
-/* FORMAT TANGGAL */
-function formatTanggal(tgl){
-    if(!tgl) return "-";
-
-    let d = new Date(tgl);
-
-    if(isNaN(d)) return tgl;
-
-    d.setHours(d.getHours() + 7); // fix timezone WIB
-
-    let hari = String(d.getDate()).padStart(2,'0');
-    let bulan = String(d.getMonth()+1).padStart(2,'0');
-    let tahun = d.getFullYear();
-
-    return `${hari}-${bulan}-${tahun}`;
-}
-
 /* LOAD DATA */
 fetch(API)
 .then(res=>res.json())
@@ -190,31 +173,33 @@ document.getElementById("hasil").innerHTML=`
 <div class="item"><b>NIP</b>${val(d.nip)}</div>
 <div class="item"><b>Gol Darah</b>${val(d.gol_darah)}</div>
 
+<div class="item"><b>Ket Gol Darah</b>${val(d.ket_gol_darah)}</div>
 <div class="item"><b>Mapel</b>${val(d.mapel)}</div>
-<div class="item"><b>Tgl Lahir</b>${formatTanggal(d.tgl_lahir)}</div>
 
+<div class="item"><b>Tgl Lahir</b>${val(d.tgl_lahir)}</div>
 <div class="item"><b>Usia</b>${val(d.usia)}</div>
-<div class="item"><b>Tgl Pengangkatan</b>${formatTanggal(d.tgl_pengangkatan)}</div>
 
+<div class="item"><b>Tahun Pengangkatan</b>${val(d.tgl_pengangkatan)}</div>
 <div class="item"><b>Numerologi</b>${val(d.numerologi)}</div>
+
 <div class="item"><b>Arti Numerologi</b>${val(d.arti_angka_numerologi)}</div>
-
 <div class="item"><b>Zodiak</b>${val(d.zodiak)}</div>
+
 <div class="item"><b>Bahasa Cinta</b>${val(d.bahasa_cinta)}</div>
-
 <div class="item"><b>Karakter Kuat</b>${val(d.karakter_kuat)}</div>
+
 <div class="item"><b>Angka Keberuntungan</b>${val(d.angka_keberuntungan)}</div>
-
 <div class="item"><b>Watak Jawa</b>${val(d.watak_jawa)}</div>
+
 <div class="item"><b>Shio</b>${val(d.shio)}</div>
-
 <div class="item"><b>Elemen</b>${val(d.elemen)}</div>
+
 <div class="item"><b>Kepribadian</b>${val(d.kepribadian)}</div>
-
 <div class="item"><b>Indikasi Gaya</b>${val(d.indikasi_gaya)}</div>
-<div class="item"><b>Kecocokan Tim</b>${val(d.kecocokan_tim)}</div>
 
+<div class="item"><b>Kecocokan Tim</b>${val(d.kecocokan_tim)}</div>
 <div class="item"><b>Gaya Kerja</b>${val(d.gaya_kerja)}</div>
+
 <div class="item"><b>Potensi Karier</b>${val(d.potensi_karier)}</div>
 
 </div>
