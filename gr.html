@@ -46,11 +46,20 @@ button{
     cursor:pointer;
 }
 
+button:hover{
+    opacity:.9;
+}
+
 .result{
     margin-top:20px;
     background:#1e293b;
     padding:20px;
     border-radius:16px;
+    animation:fade .4s ease;
+}
+
+.result h2{
+    margin-top:0;
 }
 
 .grid{
@@ -72,6 +81,11 @@ button{
     opacity:.7;
 }
 
+@keyframes fade{
+    from{opacity:0;transform:translateY(10px)}
+    to{opacity:1;transform:translateY(0)}
+}
+
 @media(max-width:600px){
     .grid{
         grid-template-columns:1fr;
@@ -87,7 +101,10 @@ button{
 
 <h3>Pilih Nama Guru</h3>
 
-<select id="nama"></select>
+<select id="nama">
+<option value="">Loading...</option>
+</select>
+
 <button onclick="tampilkan()">Tampilkan</button>
 
 <div id="hasil"></div>
@@ -101,9 +118,29 @@ const API="https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT
 
 let DATA=[];
 
+/* FORMAT TANGGAL */
+function formatTanggal(tgl){
+    if(!tgl) return "-";
+
+    let d = new Date(tgl);
+
+    if(isNaN(d)) return tgl;
+
+    d.setHours(d.getHours() + 7); // fix timezone WIB
+
+    let hari = String(d.getDate()).padStart(2,'0');
+    let bulan = String(d.getMonth()+1).padStart(2,'0');
+    let tahun = d.getFullYear();
+
+    return `${hari}-${bulan}-${tahun}`;
+}
+
+/* LOAD DATA */
 fetch(API)
 .then(res=>res.json())
 .then(data=>{
+
+    console.log("DATA:",data);
 
     DATA=data;
 
@@ -116,10 +153,16 @@ fetch(API)
         }
     });
 
+})
+.catch(err=>{
+    alert("❌ Gagal load data");
+    console.error(err);
 });
 
+/* AMAN VALUE */
 const val = v => v ? v : "-";
 
+/* TAMPILKAN DATA */
 function tampilkan(){
 
 let nama=document.getElementById("nama").value;
@@ -131,9 +174,15 @@ return;
 
 let d=DATA.find(x => x.nama===nama);
 
+if(!d){
+alert("Data tidak ditemukan");
+return;
+}
+
 document.getElementById("hasil").innerHTML=`
 
 <div class="result">
+
 <h2>${val(d.nama)}</h2>
 
 <div class="grid">
@@ -142,10 +191,10 @@ document.getElementById("hasil").innerHTML=`
 <div class="item"><b>Gol Darah</b>${val(d.gol_darah)}</div>
 
 <div class="item"><b>Mapel</b>${val(d.mapel)}</div>
-<div class="item"><b>Tgl Lahir</b>${val(d.tgl_lahir)}</div>
+<div class="item"><b>Tgl Lahir</b>${formatTanggal(d.tgl_lahir)}</div>
 
 <div class="item"><b>Usia</b>${val(d.usia)}</div>
-<div class="item"><b>Tgl Pengangkatan</b>${val(d.tgl_pengangkatan)}</div>
+<div class="item"><b>Tgl Pengangkatan</b>${formatTanggal(d.tgl_pengangkatan)}</div>
 
 <div class="item"><b>Numerologi</b>${val(d.numerologi)}</div>
 <div class="item"><b>Arti Numerologi</b>${val(d.arti_angka_numerologi)}</div>
@@ -169,6 +218,7 @@ document.getElementById("hasil").innerHTML=`
 <div class="item"><b>Potensi Karier</b>${val(d.potensi_karier)}</div>
 
 </div>
+
 </div>
 `;
 
