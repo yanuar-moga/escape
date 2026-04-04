@@ -139,7 +139,7 @@ fetch(API)
     select.innerHTML='<option value="">-- Pilih Nama --</option>';
 
     data.forEach(d=>{
-        let nama = d.nama || d["Nama"] || d["NAMA"];
+        let nama = d["NAMA"];
         if(nama){
             select.innerHTML+=`<option value="${nama}">${nama}</option>`;
         }
@@ -164,11 +164,7 @@ alert("Pilih nama dulu!");
 return;
 }
 
-let d=DATA.find(x =>
-    x.nama===nama ||
-    x["Nama"]===nama ||
-    x["NAMA"]===nama
-);
+let d=DATA.find(x => x["NAMA"]===nama);
 
 if(!d){
 alert("Data tidak ditemukan");
@@ -179,36 +175,38 @@ document.getElementById("hasil").innerHTML=`
 
 <div class="result">
 
-<h2>${val(d.nama || d["Nama"])}</h2>
+<h2>${val(d["NAMA"])}</h2>
 
 <div class="grid">
 
-<div class="item"><b>NIP</b>${val(d.nip)}</div>
-<div class="item"><b>Mapel</b>${val(d.mapel)}</div>
+<div class="item"><b>NIP</b>${val(d["NIP"])}</div>
+<div class="item"><b>Mapel</b>${val(d["MAPEL"])}</div>
 
-<div class="item"><b>Tgl Lahir</b>${val(d["tgl lahir"] || d["Tgl Lahir"])}</div>
-<div class="item"><b>Usia</b>${val(d.usia)}</div>
+<div class="item"><b>Tgl Lahir</b>${val(d["Tgl Lahir"])}</div>
+<div class="item"><b>Usia</b>${val(d["Usia"])}</div>
 
-<div class="item"><b>Tgl Pengangkatan</b>${val(d["tgl pengangkatan"])}</div>
-<div class="item"><b>Numerologi</b>${val(d.numerologi)}</div>
+<div class="item"><b>Tgl Pengangkatan</b>${val(d["Tgl Pengangkatan"])}</div>
+<div class="item"><b>Numerologi</b>${val(d["Numerologi"])}</div>
 
-<div class="item"><b>Zodiak</b>${val(d.zodiak)}</div>
-<div class="item"><b>Bahasa Cinta</b>${val(d["bahasa cinta"])}</div>
+<div class="item"><b>Arti Numerologi</b>${val(d["Arti Angka Numerologi"])}</div>
+<div class="item"><b>Zodiak</b>${val(d["Zodiak"])}</div>
 
-<div class="item"><b>Karakter Kuat</b>${val(d["karakter kuat"])}</div>
-<div class="item"><b>Angka Keberuntungan</b>${val(d["angka keberuntungan"])}</div>
+<div class="item"><b>Bahasa Cinta</b>${val(d["Bahasa Cinta"])}</div>
+<div class="item"><b>Karakter Kuat</b>${val(d["Karakter Kuat"])}</div>
 
-<div class="item"><b>Watak Jawa</b>${val(d["watak jawa"])}</div>
-<div class="item"><b>Shio</b>${val(d.shio)}</div>
+<div class="item"><b>Angka Keberuntungan</b>${val(d["Angka Keberuntungan"])}</div>
+<div class="item"><b>Watak Jawa</b>${val(d["Watak Jawa"])}</div>
 
-<div class="item"><b>Elemen</b>${val(d.elemen)}</div>
-<div class="item"><b>Kepribadian</b>${val(d.kepribadian)}</div>
+<div class="item"><b>Shio</b>${val(d["Shio"])}</div>
+<div class="item"><b>Elemen</b>${val(d["Elemen"])}</div>
 
-<div class="item"><b>Indikasi Gaya</b>${val(d["indikasi gaya"])}</div>
-<div class="item"><b>Kecocokan Tim</b>${val(d["kecocokan tim"])}</div>
+<div class="item"><b>Kepribadian</b>${val(d["Kepribadian"])}</div>
+<div class="item"><b>Indikasi Gaya</b>${val(d["Indikasi Gaya"])}</div>
 
-<div class="item"><b>Gaya Kerja</b>${val(d["gaya kerja"])}</div>
-<div class="item"><b>Potensi Karier</b>${val(d["potensi karier"])}</div>
+<div class="item"><b>Kecocokan Tim</b>${val(d["Kecocokan Tim"])}</div>
+<div class="item"><b>Gaya Kerja</b>${val(d["Gaya Kerja"])}</div>
+
+<div class="item"><b>Potensi Karier</b>${val(d["Potensi Karier"])}</div>
 
 </div>
 
