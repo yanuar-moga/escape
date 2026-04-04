@@ -62,6 +62,16 @@ button:hover{
     margin-top:0;
 }
 
+/* 🔥 highlight kepribadian */
+.highlight{
+    background:linear-gradient(135deg,#22c55e,#4ade80);
+    color:#022c22;
+    padding:12px;
+    border-radius:12px;
+    margin-bottom:15px;
+    font-size:14px;
+}
+
 .grid{
     display:grid;
     grid-template-columns:1fr 1fr;
@@ -123,8 +133,6 @@ fetch(API)
 .then(res=>res.json())
 .then(data=>{
 
-    console.log("DATA:",data);
-
     DATA=data;
 
     let select=document.getElementById("nama");
@@ -139,7 +147,6 @@ fetch(API)
 })
 .catch(err=>{
     alert("❌ Gagal load data");
-    console.error(err);
 });
 
 /* AMAN VALUE */
@@ -168,6 +175,12 @@ document.getElementById("hasil").innerHTML=`
 
 <h2>${val(d.nama)}</h2>
 
+<!-- 🔥 KEPRIBADIAN DI ATAS -->
+<div class="highlight">
+<b>Kepribadian</b><br>
+${val(d.kepribadian)}
+</div>
+
 <div class="grid">
 
 <div class="item"><b>NIP</b>${val(d.nip)}</div>
@@ -194,12 +207,10 @@ document.getElementById("hasil").innerHTML=`
 <div class="item"><b>Shio</b>${val(d.shio)}</div>
 <div class="item"><b>Elemen</b>${val(d.elemen)}</div>
 
-<div class="item"><b>Kepribadian</b>${val(d.kepribadian)}</div>
 <div class="item"><b>Indikasi Gaya</b>${val(d.indikasi_gaya)}</div>
-
 <div class="item"><b>Kecocokan Tim</b>${val(d.kecocokan_tim)}</div>
-<div class="item"><b>Gaya Kerja</b>${val(d.gaya_kerja)}</div>
 
+<div class="item"><b>Gaya Kerja</b>${val(d.gaya_kerja)}</div>
 <div class="item"><b>Potensi Karier</b>${val(d.potensi_karier)}</div>
 
 </div>
