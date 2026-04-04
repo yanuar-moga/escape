@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Guru Pro</title>
+
+<style>
+body{
+    font-family:Segoe UI;
+    margin:0;
+    background:#0f172a;
+    color:#fff;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+    padding:20px;
+}
+
+.card{
+    background:linear-gradient(135deg,#1e293b,#0f172a);
+    padding:20px;
+    border-radius:18px;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+}
+
+select,button{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:10px;
+    border:none;
+}
+
+button{
+    background:linear-gradient(135deg,#3b82f6,#22d3ee);
+    color:#fff;
+    cursor:pointer;
+}
+
+.result{
+    margin-top:20px;
+}
+
+.compare{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+}
+
+.box{
+    background:#1e293b;
+    padding:15px;
+    border-radius:12px;
+}
+
+.item{
+    background:#0f172a;
+    padding:8px;
+    border-radius:8px;
+    margin-bottom:6px;
+    font-size:13px;
+}
+
+.title{
+    font-weight:bold;
+    margin-bottom:10px;
+    font-size:16px;
+}
+
+.highlight{
+    background:#22c55e;
+    color:#022c22;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+    font-size:13px;
+}
+
+/* 🔥 ANALISIS BOX */
+.analysis{
+    margin-top:20px;
+    background:#111827;
+    padding:15px;
+    border-radius:12px;
+}
+
+.score{
+    font-size:18px;
+    font-weight:bold;
+    color:#22d3ee;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<div class="card">
+
+<h3>Versus Guru 🔥</h3>
+
+<select id="nama1"></select>
+<select id="nama2"></select>
+
+<button onclick="bandingkan()">Bandingkan</button>
+
+<div id="hasil"></div>
+
+</div>
+</div>
+
+<script>
+
+const API="https://script.google.com/macros/s/AKfycbyGVSyKHcB7G2rLLGs3kvG45LvfkT1UtPAilcb4h0XUZgLwnlP1bffdbnJk5ldGP3CQnw/exec";
+
+let DATA=[];
+
+/* LOAD DATA */
+fetch(API)
+.then(res=>res.json())
+.then(data=>{
+    DATA=data;
+
+    let s1=document.getElementById("nama1");
+    let s2=document.getElementById("nama2");
+
+    s1.innerHTML='<option value="">-- Guru A --</option>';
+    s2.innerHTML='<option value="">-- Guru B --</option>';
+
+    data.forEach(d=>{
+        if(d.nama){
+            s1.innerHTML+=`<option value="${d.nama}">${d.nama}</option>`;
+            s2.innerHTML+=`<option value="${d.nama}">${d.nama}</option>`;
+        }
+    });
+});
+
+/* AMAN */
+const val = v => v ? v : "-";
+
+/* 🔥 HITUNG KECOCOKAN */
+function hitungSkor(A,B){
+    let skor = 0;
+
+    if(A.kepribadian === B.kepribadian) skor += 40;
+    if(A.gaya_kerja === B.gaya_kerja) skor += 30;
+    if(A.numerologi === B.numerologi) skor += 20;
+    if(A.zodiak === B.zodiak) skor += 10;
+
+    return skor;
+}
+
+/* 🧠 ANALISIS */
+function analisis(A,B){
+
+    let hasil = "";
+
+    // leadership
+    if([1,8].includes(Number(A.numerologi))){
+        hasil += `🔥 ${A.nama} cenderung lebih dominan sebagai pemimpin.<br>`;
+    }
+    if([1,8].includes(Number(B.numerologi))){
+        hasil += `🔥 ${B.nama} memiliki potensi kepemimpinan kuat.<br>`;
+    }
+
+    // teamwork
+    if(A.gaya_kerja === "Tim"){
+        hasil += `🤝 ${A.nama} kuat dalam kerja tim.<br>`;
+    }
+    if(B.gaya_kerja === "Tim"){
+        hasil += `🤝 ${B.nama} sangat kolaboratif.<br>`;
+    }
+
+    // kepribadian
+    if(A.kepribadian.includes("Introvert")){
+        hasil += `🧠 ${A.nama} lebih analitis dan reflektif.<br>`;
+    }
+    if(B.kepribadian.includes("Ekstrovert")){
+        hasil += `⚡ ${B.nama} lebih aktif secara sosial.<br>`;
+    }
+
+    return hasil || "Keduanya memiliki karakter yang seimbang.";
+}
+
+/* COMPARE */
+function bandingkan(){
+
+let n1=document.getElementById("nama1").value;
+let n2=document.getElementById("nama2").value;
+
+if(!n1 || !n2){
+alert("Pilih kedua guru!");
+return;
+}
+
+let A=DATA.find(x=>x.nama===n1);
+let B=DATA.find(x=>x.nama===n2);
+
+let skor = hitungSkor(A,B);
+
+document.getElementById("hasil").innerHTML=`
+
+<div class="result">
+
+<div class="compare">
+
+<div class="box">
+<div class="title">${A.nama}</div>
+
+<div class="highlight">${val(A.kepribadian)}</div>
+
+<div class="item"><b>Mapel:</b> ${val(A.mapel)}</div>
+<div class="item"><b>Zodiak:</b> ${val(A.zodiak)}</div>
+<div class="item"><b>Numerologi:</b> ${val(A.numerologi)}</div>
+<div class="item"><b>Gaya Kerja:</b> ${val(A.gaya_kerja)}</div>
+<div class="item"><b>Potensi Karier:</b> ${val(A.potensi_karier)}</div>
+
+</div>
+
+<div class="box">
+<div class="title">${B.nama}</div>
+
+<div class="highlight">${val(B.kepribadian)}</div>
+
+<div class="item"><b>Mapel:</b> ${val(B.mapel)}</div>
+<div class="item"><b>Zodiak:</b> ${val(B.zodiak)}</div>
+<div class="item"><b>Numerologi:</b> ${val(B.numerologi)}</div>
+<div class="item"><b>Gaya Kerja:</b> ${val(B.gaya_kerja)}</div>
+<div class="item"><b>Potensi Karier:</b> ${val(B.potensi_karier)}</div>
+
+</div>
+
+</div>
+
+<!-- 🔥 ANALISIS -->
+<div class="analysis">
+
+<div class="score">Kecocokan: ${skor}%</div>
+<br>
+
+${analisis(A,B)}
+
+</div>
+
+</div>
+`;
+
+}
+
+</script>
+
+</body>
+</html>
